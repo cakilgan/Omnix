@@ -1,9 +1,0 @@
-{
-  "revision": 0,
-  "rules": [
-    {
-      "primary-output": "CakilganCore\\CMakeFiles\\CakilganCore.dir\\src\\token_utils.cpp.obj"
-    }
-  ],
-  "version": 1
-}

@@ -1,9 +1,0 @@
-{
-  "revision": 0,
-  "rules": [
-    {
-      "primary-output": "CMakeFiles\\OmnixTests.dir\\test\\tests.cpp.obj"
-    }
-  ],
-  "version": 1
-}

@@ -1,9 +1,0 @@
-{
-  "revision": 0,
-  "rules": [
-    {
-      "primary-output": "CMakeFiles\\OmnixLib.dir\\src\\OmnixWindowBackend.cpp.obj"
-    }
-  ],
-  "version": 1
-}
