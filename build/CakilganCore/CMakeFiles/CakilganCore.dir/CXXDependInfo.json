@@ -1,0 +1,30 @@
+{
+	"bmi-installation" : null,
+	"compiler-frontend-variant" : "GNU",
+	"compiler-id" : "Clang",
+	"compiler-simulate-id" : "MSVC",
+	"config" : "Debug",
+	"cxx-modules" : {},
+	"database-info" : null,
+	"dir-cur-bld" : "C:/Users/enesk/c++/Omnix/build/CakilganCore",
+	"dir-cur-src" : "C:/Users/enesk/c++/Omnix/CakilganCore",
+	"dir-top-bld" : "C:/Users/enesk/c++/Omnix/build",
+	"dir-top-src" : "C:/Users/enesk/c++/Omnix",
+	"exports" : [],
+	"forward-modules-from-target-dirs" : [],
+	"include-dirs" : 
+	[
+		"C:\\Users\\enesk\\c++\\Omnix\\CakilganCore\\include"
+	],
+	"language" : "CXX",
+	"linked-target-dirs" : [],
+	"module-dir" : "C:/Users/enesk/c++/Omnix/build/CakilganCore/CMakeFiles/CakilganCore.dir",
+	"sources" : 
+	{
+		"CakilganCore/CMakeFiles/CakilganCore.dir/src/token_utils.cpp.obj" : 
+		{
+			"language" : "CXX",
+			"source" : "C:/Users/enesk/c++/Omnix/CakilganCore/src/token_utils.cpp"
+		}
+	}
+}

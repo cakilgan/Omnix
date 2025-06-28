@@ -1,0 +1,3 @@
+ninja_dyndep_version = 1.0
+build Thunder2D/CMakeFiles/Thunder2D.dir/src/thunder2d.cpp.obj: dyndep
+

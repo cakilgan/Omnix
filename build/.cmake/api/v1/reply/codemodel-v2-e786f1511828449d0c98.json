@@ -1,0 +1,417 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						8,
+						10
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-d0094a50bb2071803777.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.31"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						1,
+						2,
+						10,
+						11
+					]
+				},
+				{
+					"build" : "CakilganCore",
+					"jsonFile" : "directory-CakilganCore-Debug-5b2709e6a1d8cb4ea76c.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.31.0"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 1,
+					"source" : "CakilganCore",
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"build" : "glad",
+					"jsonFile" : "directory-glad-Debug-6aad498c2c8cd39e25f8.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.31.0"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 2,
+					"source" : "glad",
+					"targetIndexes" : 
+					[
+						7
+					]
+				},
+				{
+					"build" : "max",
+					"jsonFile" : "directory-max-Debug-3712fd08f32b73afccd9.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.31.0"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 3,
+					"source" : "max",
+					"targetIndexes" : 
+					[
+						9
+					]
+				},
+				{
+					"build" : "brain",
+					"jsonFile" : "directory-brain-Debug-563347425afa5d8d0a8c.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.31.0"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 4,
+					"source" : "brain",
+					"targetIndexes" : 
+					[
+						5
+					]
+				},
+				{
+					"build" : "freetype",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-freetype-Debug-7588a4846d6876ee6a3c.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.12"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 5,
+					"source" : "freetype",
+					"targetIndexes" : 
+					[
+						6
+					]
+				},
+				{
+					"build" : "box2d",
+					"childIndexes" : 
+					[
+						7
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-box2d-Debug-9eeca46615c7b548afaf.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.22"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 6,
+					"source" : "box2d"
+				},
+				{
+					"build" : "box2d/src",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-box2d.src-Debug-9b0c08efec1c58a2b70e.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.22"
+					},
+					"parentIndex" : 6,
+					"projectIndex" : 6,
+					"source" : "box2d/src",
+					"targetIndexes" : 
+					[
+						4
+					]
+				},
+				{
+					"build" : "glm",
+					"childIndexes" : 
+					[
+						9
+					],
+					"jsonFile" : "directory-glm-Debug-ab70d989331aa8f80f5f.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.6"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 7,
+					"source" : "glm"
+				},
+				{
+					"build" : "glm/glm",
+					"jsonFile" : "directory-glm.glm-Debug-40ab1eadfbf0266e4336.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.6"
+					},
+					"parentIndex" : 8,
+					"projectIndex" : 7,
+					"source" : "glm/glm",
+					"targetIndexes" : 
+					[
+						8
+					]
+				},
+				{
+					"build" : "Thunder2D",
+					"jsonFile" : "directory-Thunder2D-Debug-a73c924e15bc481ef0f3.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.31.0"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 8,
+					"source" : "Thunder2D",
+					"targetIndexes" : 
+					[
+						3
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"childIndexes" : 
+					[
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					],
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "Omnix",
+					"targetIndexes" : 
+					[
+						1,
+						2,
+						10,
+						11
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						1
+					],
+					"name" : "CakilganCore",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						2
+					],
+					"name" : "glad",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						7
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						3
+					],
+					"name" : "max",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						9
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						4
+					],
+					"name" : "brain",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						5
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						5
+					],
+					"name" : "freetype",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						6
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						6,
+						7
+					],
+					"name" : "box2d",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						4
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						8,
+						9
+					],
+					"name" : "glm",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						8
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						10
+					],
+					"name" : "Thunder2D",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						3
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 1,
+					"id" : "CakilganCore::@f0e1f6a65ed98196ba54",
+					"jsonFile" : "target-CakilganCore-Debug-ddbc14e2bcddd35bea0d.json",
+					"name" : "CakilganCore",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "OmnixLib::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-OmnixLib-Debug-b464deb8971ef0582344.json",
+					"name" : "OmnixLib",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "OmnixTests::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-OmnixTests-Debug-b01fa6a74f6303b45618.json",
+					"name" : "OmnixTests",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 10,
+					"id" : "Thunder2D::@605ec796ad48a9cd3bf6",
+					"jsonFile" : "target-Thunder2D-Debug-ce6b4ed9a9ed3e1ca93f.json",
+					"name" : "Thunder2D",
+					"projectIndex" : 8
+				},
+				{
+					"directoryIndex" : 7,
+					"id" : "box2d::@1702ee254ed0382960a7",
+					"jsonFile" : "target-box2d-Debug-4d81b06aba62fb5f5340.json",
+					"name" : "box2d",
+					"projectIndex" : 6
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "brain::@63e162a2732e823870e0",
+					"jsonFile" : "target-brain-Debug-ab333881e496f821fd71.json",
+					"name" : "brain",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 5,
+					"id" : "freetype::@96957e95d729942f8bb0",
+					"jsonFile" : "target-freetype-Debug-d44165e5f6e9200ef8a0.json",
+					"name" : "freetype",
+					"projectIndex" : 5
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "glad::@74ca6b3581f0d7366b1f",
+					"jsonFile" : "target-glad-Debug-be45f0e13c3a0977a464.json",
+					"name" : "glad",
+					"projectIndex" : 2
+				},
+				{
+					"directoryIndex" : 9,
+					"id" : "glm::@e7e6a059f495982a7e13",
+					"jsonFile" : "target-glm-Debug-b7efc2fa2d866d5b1d2c.json",
+					"name" : "glm",
+					"projectIndex" : 7
+				},
+				{
+					"directoryIndex" : 3,
+					"id" : "max::@8356d24d12bad41da1e1",
+					"jsonFile" : "target-max-Debug-ae570841b52d9a6df5ec.json",
+					"name" : "max",
+					"projectIndex" : 3
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "max_tests::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-max_tests-Debug-b64e06aae33335e18a24.json",
+					"name" : "max_tests",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "test_tests::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-test_tests-Debug-7df1b215fb9656e9776f.json",
+					"name" : "test_tests",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "C:/Users/enesk/c++/Omnix/build",
+		"source" : "C:/Users/enesk/c++/Omnix"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 7
+	}
+}

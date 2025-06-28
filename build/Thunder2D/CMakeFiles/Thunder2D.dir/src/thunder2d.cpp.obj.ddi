@@ -1,0 +1,9 @@
+{
+  "revision": 0,
+  "rules": [
+    {
+      "primary-output": "Thunder2D\\CMakeFiles\\Thunder2D.dir\\src\\thunder2d.cpp.obj"
+    }
+  ],
+  "version": 1
+}

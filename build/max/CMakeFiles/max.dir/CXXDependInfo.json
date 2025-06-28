@@ -1,0 +1,44 @@
+{
+	"bmi-installation" : null,
+	"compiler-frontend-variant" : "GNU",
+	"compiler-id" : "Clang",
+	"compiler-simulate-id" : "MSVC",
+	"config" : "Debug",
+	"cxx-modules" : {},
+	"database-info" : null,
+	"dir-cur-bld" : "C:/Users/enesk/c++/Omnix/build/max",
+	"dir-cur-src" : "C:/Users/enesk/c++/Omnix/max",
+	"dir-top-bld" : "C:/Users/enesk/c++/Omnix/build",
+	"dir-top-src" : "C:/Users/enesk/c++/Omnix",
+	"exports" : [],
+	"forward-modules-from-target-dirs" : [],
+	"include-dirs" : 
+	[
+		"C:\\Users\\enesk\\c++\\Omnix\\max\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\max\\CakilganCore\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\max\\glad\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\max\\max\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\max\\brain\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\max\\Thunder2D\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\max\\freetype\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\CakilganCore\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\glad\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\brain\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\Thunder2D\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\freetype\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\box2d\\include\\box2d",
+		"C:\\Users\\enesk\\c++\\Omnix\\glm\\glm"
+	],
+	"language" : "CXX",
+	"linked-target-dirs" : [],
+	"module-dir" : "C:/Users/enesk/c++/Omnix/build/max/CMakeFiles/max.dir",
+	"sources" : 
+	{
+		"max/CMakeFiles/max.dir/src/max.cpp.obj" : 
+		{
+			"language" : "CXX",
+			"source" : "C:/Users/enesk/c++/Omnix/max/src/max.cpp"
+		}
+	}
+}

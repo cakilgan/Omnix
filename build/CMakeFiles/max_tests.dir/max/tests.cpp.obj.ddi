@@ -1,0 +1,9 @@
+{
+  "revision": 0,
+  "rules": [
+    {
+      "primary-output": "CMakeFiles\\max_tests.dir\\max\\tests.cpp.obj"
+    }
+  ],
+  "version": 1
+}

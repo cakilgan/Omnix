@@ -1,0 +1,63 @@
+{
+	"bmi-installation" : null,
+	"compiler-frontend-variant" : "GNU",
+	"compiler-id" : "Clang",
+	"compiler-simulate-id" : "MSVC",
+	"config" : "Debug",
+	"cxx-modules" : {},
+	"database-info" : null,
+	"dir-cur-bld" : "C:/Users/enesk/c++/Omnix/build",
+	"dir-cur-src" : "C:/Users/enesk/c++/Omnix",
+	"dir-top-bld" : "C:/Users/enesk/c++/Omnix/build",
+	"dir-top-src" : "C:/Users/enesk/c++/Omnix",
+	"exports" : [],
+	"forward-modules-from-target-dirs" : [],
+	"include-dirs" : 
+	[
+		"C:\\Users\\enesk\\c++\\Omnix\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\CakilganCore\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\glad\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\max\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\brain\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\Thunder2D\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\freetype\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\box2d\\include\\box2d",
+		"C:\\Users\\enesk\\c++\\Omnix\\glm\\glm",
+		"C:\\Users\\enesk\\c++\\Omnix\\max\\CakilganCore\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\max\\glad\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\max\\max\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\max\\brain\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\max\\Thunder2D\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\max\\freetype\\include",
+		"freetype\\include",
+		"C:\\Users\\enesk\\c++\\Omnix\\box2d\\src\\..\\include",
+		"box2d\\src",
+		"C:\\Users\\enesk\\c++\\Omnix\\glm"
+	],
+	"language" : "CXX",
+	"linked-target-dirs" : [],
+	"module-dir" : "C:/Users/enesk/c++/Omnix/build/CMakeFiles/OmnixLib.dir",
+	"sources" : 
+	{
+		"CMakeFiles/OmnixLib.dir/src/Omnix.cpp.obj" : 
+		{
+			"language" : "CXX",
+			"source" : "C:/Users/enesk/c++/Omnix/src/Omnix.cpp"
+		},
+		"CMakeFiles/OmnixLib.dir/src/OmnixModule.cpp.obj" : 
+		{
+			"language" : "CXX",
+			"source" : "C:/Users/enesk/c++/Omnix/src/OmnixModule.cpp"
+		},
+		"CMakeFiles/OmnixLib.dir/src/OmnixWindowBackend.cpp.obj" : 
+		{
+			"language" : "CXX",
+			"source" : "C:/Users/enesk/c++/Omnix/src/OmnixWindowBackend.cpp"
+		},
+		"CMakeFiles/OmnixLib.dir/src/boltlog.cpp.obj" : 
+		{
+			"language" : "CXX",
+			"source" : "C:/Users/enesk/c++/Omnix/src/boltlog.cpp"
+		}
+	}
+}

@@ -1,0 +1,9 @@
+{
+  "revision": 0,
+  "rules": [
+    {
+      "primary-output": "CMakeFiles\\OmnixLib.dir\\src\\boltlog.cpp.obj"
+    }
+  ],
+  "version": 1
+}

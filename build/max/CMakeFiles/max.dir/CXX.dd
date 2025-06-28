@@ -1,0 +1,3 @@
+ninja_dyndep_version = 1.0
+build max/CMakeFiles/max.dir/src/max.cpp.obj: dyndep
+
