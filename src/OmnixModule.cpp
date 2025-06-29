@@ -377,7 +377,9 @@ NP_DATA(Omnix::Defaults::OmnixMouseModule, const std::vector<__variants>& keys){
                         return mouse[btn];
                     case OMNIX_JUST_PRESS: {
                         bool result = mouse_just_press[btn];
-                        mouse_just_press[btn] = false;
+                        if(result){
+                            mouse_just_press[btn] = false;
+                        }
                         return result;
                     }
                     case OMNIX_JUST_PRESS_REPEAT: {
@@ -400,6 +402,11 @@ NP_DATA(Omnix::Defaults::OmnixMouseModule, const std::vector<__variants>& keys){
                return xPos;
                case OMNIX_MOUSE_POS_Y:
                return yPos;
+
+               case OMNIX_MOUSE_DX:
+               return dx;
+               case OMNIX_MOUSE_DY:
+               return dy;
             }
         }
         

@@ -123,6 +123,12 @@ namespace max{
   struct vec4{
     vectype x,y,z,w;
   };
+  static inline bool equalsv4(const max::vec4<float>& a, const max::vec4<float>& b, float eps = 0.001f) {
+      return fabs(a.x - b.x) < eps &&
+             fabs(a.y - b.y) < eps &&
+             fabs(a.z - b.z) < eps &&
+             fabs(a.w - b.w) < eps;
+  }
   template<typename vectype>
   struct vec3{
     vectype x,y,z;

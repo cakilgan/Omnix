@@ -557,7 +557,16 @@ std::vector<std::shared_ptr<IRenderable>> renderables;
 
         indexCount = indexData.size();
     }
+    template<typename K, typename V>
+    void printMap(const std::map<K, V>& m, const std::string& name = "map") {
+        std::cout << "Contents of " << name << ":\n";
+        for (const auto& [key, value] : m) {
+            std::cout << "  [" << key << "] = " << value << '\n';
+        }
+    }
     void updateDirtyRenderables() {
+        int _c = 0;
+        std::map<std::string, int> vals{};
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     
@@ -583,8 +592,13 @@ std::vector<std::shared_ptr<IRenderable>> renderables;
                             indices.data());
     
 
+            vals[typeid(*renderable).name()]++;
             renderable->setClean();
+            _c++;
         }
+
+        printMap(vals);
+        std::cout<<"updated "<<_c<<" renderables!"<<std::endl;
     }
     void render(const float proj[16]) {
         if (renderables.empty() || !shader) return;

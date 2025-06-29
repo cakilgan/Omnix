@@ -413,6 +413,9 @@ class OmnixSceneModule:public Core::OmnixModule{
 #define OMNIX_UI_ELEMENT 50001 
  #define OMNIX_UI_ELEMENT_BUTTON 50011
   #define OMNIX_UI_ELEMENT_BUTTON_CLICK 50111
+  #define OMNIX_UI_ELEMENT_BUTTON_HOLD 50211
+  #define OMNIX_UI_ELEMENT_BUTTON_RELEASE 50311
+
 
 struct OmnixUIEvent:OmnixEvent{
     int eventType = 0;

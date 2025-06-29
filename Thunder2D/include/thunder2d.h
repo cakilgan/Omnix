@@ -622,12 +622,14 @@ namespace t2d::ui{
         char character;
         bool dirty = true;
         int txLoc = 1;
+        bool visible = false;
         std::unordered_map<char, Character> chars;
         UIGlyph(std::unordered_map<char, Character> chars,char ch, max::vec2<float> position, max::vec2<float> size)
             : chars(chars),character(ch), pos(position), scale(size) {
 
 
             }
+        UIGlyph(){}
 
         std::vector<std::unique_ptr<BaseVertex>> generateVertices() override {
             const auto& ch = chars[character];
@@ -645,11 +647,20 @@ namespace t2d::ui{
 
             std::vector<std::unique_ptr<BaseVertex>> vertices;
             
+
+            if(!visible){
+            //! check
+            vertices.push_back(std::make_unique<UIVertex>(corners[0].x, corners[0].y, ch.uvMin.x, ch.uvMin.y, color.x,color.y,color.z,0, txLoc, OMNIX_UI_FONT));
+            vertices.push_back(std::make_unique<UIVertex>(corners[1].x, corners[1].y, ch.uvMax.x, ch.uvMin.y, color.x,color.y,color.z,0, txLoc, OMNIX_UI_FONT));
+            vertices.push_back(std::make_unique<UIVertex>(corners[2].x, corners[2].y, ch.uvMax.x, ch.uvMax.y, color.x,color.y,color.z,0, txLoc, OMNIX_UI_FONT));
+            vertices.push_back(std::make_unique<UIVertex>(corners[3].x, corners[3].y, ch.uvMin.x, ch.uvMax.y, color.x,color.y,color.z,0, txLoc, OMNIX_UI_FONT));
+            }else{
             vertices.push_back(std::make_unique<UIVertex>(corners[0].x, corners[0].y, ch.uvMin.x, ch.uvMin.y, color.x,color.y,color.z,color.w, txLoc, OMNIX_UI_FONT));
             vertices.push_back(std::make_unique<UIVertex>(corners[1].x, corners[1].y, ch.uvMax.x, ch.uvMin.y, color.x,color.y,color.z,color.w, txLoc, OMNIX_UI_FONT));
             vertices.push_back(std::make_unique<UIVertex>(corners[2].x, corners[2].y, ch.uvMax.x, ch.uvMax.y, color.x,color.y,color.z,color.w, txLoc, OMNIX_UI_FONT));
             vertices.push_back(std::make_unique<UIVertex>(corners[3].x, corners[3].y, ch.uvMin.x, ch.uvMax.y, color.x,color.y,color.z,color.w, txLoc, OMNIX_UI_FONT));
-
+            }
+            
             return vertices;
         }
 
@@ -668,7 +679,8 @@ namespace t2d::ui{
         int getTextureID() const override { return 0; }
     };
 
-    class E_UIButton : public IRenderable {
+    static int frameDirtCalls = 0;
+    class E_UIQuadBase : public IRenderable {
     private:
         
         int zOrder = 0;
@@ -680,7 +692,7 @@ namespace t2d::ui{
         max::vec4<float> color;
         float rotation = 0.0f;
         std::array<max::vec2<float>, 4> txCoords;
-        E_UIButton(max::vec2<float> position, max::vec2<float> size,max::vec4<float> color, int texID,std::array<max::vec2<float>, 4> txCoords = {
+        E_UIQuadBase(max::vec2<float> position, max::vec2<float> size,max::vec4<float> color, int texID,std::array<max::vec2<float>, 4> txCoords = {
                 max::vec2<float>{0.0f, 0.0f},  // Bottom-left
                 max::vec2<float>{1.0f, 0.0f},  // Bottom-right
                 max::vec2<float>{1.0f, 1.0f},  // Top-right
@@ -690,7 +702,10 @@ namespace t2d::ui{
         }
         
         
-        void dirt(){dirty= true;}
+        void dirt(){
+            dirty= true;
+            frameDirtCalls++;
+        }
         void txid(int txid){textureID = txid;}
         bool isDirty() const override { return dirty; }
         void setClean() override { dirty = false; }
@@ -927,7 +942,9 @@ private:
 
 
     struct UIElement{
-        UIManager* manager;
+        UIManager* manager = nullptr;
+        std::vector<UIElement*> childs;
+        UIElement* parent;
         max::vec2<float> position;
         max::vec2<float> size;
         max::vec4<float> color;
@@ -936,12 +953,54 @@ private:
 
         UIElement(max::vec2<float> position,max::vec2<float> size,max::vec4<float> color = {1,1,1,1}):position(position),size(size),color(color){}
 
+        inline void add(UIElement* element){
+           element->parent = this;
+           childs.push_back(element);
+        }
         virtual void draw(UIRenderer* renderer) = 0;
-        virtual void update() = 0;
+        virtual void update(UIRenderer* uirenderer) = 0;
+
+        void dispose(){
+            for(auto child:childs){
+                delete child;
+            }
+        }
+
+        virtual ~UIElement() = default;
     };
 
 
+    struct GlyphPool {
+        std::vector<std::shared_ptr<UIGlyph>> pool;
+        size_t cursor = 0;
+    
+        void reset() {
+            cursor = 0;
+        }
+    
+        std::shared_ptr<UIGlyph> getGlyph(std::unique_ptr<AbstractBatchRenderer<UIVertex::Data>>& renderer) {
+            if (cursor >= pool.size()) {
+                std::cout<<"new"<<std::endl;
+                pool.push_back(std::make_shared<UIGlyph>());
+                renderer->addRenderable(pool[cursor]);
+                renderer->reload();
+                return pool[cursor++];
+            }
+            return pool[cursor++];
+        }
+    
+        void finalizeFrame() {
+            for (size_t i = cursor; i < pool.size(); ++i) {
+                if (pool[i]->visible) {
+                    pool[i]->visible = false;
+                    pool[i]->dirty = true;  
+                }
+            }
+            pool.back()->scale = {0,0};
+        }
+    };
     class UIRenderer {
+       GlyphPool pool{};
        public: 
         std::unique_ptr<AbstractBatchRenderer<UIVertex::Data>> renderer;
         std::unique_ptr<IShader> shader;
@@ -977,14 +1036,10 @@ private:
             renderer->reload();
         }
         void begin() {
-            renderer->renderables.clear();
-
-            if(!fonts.empty()){
-                renderer->addRenderable(std::make_shared<UIGlyph>(fonts[0]->chars,'X',max::vec2<float>{0,0},max::vec2<float>{0,0}));
-            }
+            pool.reset();
         }
 
-        void drawText(const std::string& text, max::vec2<float> position, max::vec2<float> scale,max::vec4<float> color={1,1,1,1}, int fontLoc = 0, int fonttxLoc = 0) {
+         void drawText(const std::string& text, max::vec2<float> position, max::vec2<float> scale,max::vec4<float> color={1,1,1,1}, int fontLoc = 0, int fonttxLoc = 0) {
             float cursorX = position.x;
             for (int i = 0; i < text.size(); i++) {
                 auto it = fonts[fontLoc]->chars.find(text[i]);
@@ -998,17 +1053,39 @@ private:
                 float w = ch.size.x * scale.x;
                 float h = ch.size.y * scale.y;
         
-                auto glyph = std::make_shared<UIGlyph>(fonts[fontLoc]->chars, text[i],
-                                 max::vec2<float>{xpos + w / 2.0f, ypos + h / 2.0f},
-                                 max::vec2<float>{w, h});
-                glyph->color = color;
-                glyph->txLoc = fonttxLoc;
-                renderer->addRenderable(glyph);
+
+                auto glyph = pool.getGlyph(renderer);
+                if(
+                glyph->pos == max::vec2<float>{xpos + w / 2.0f, ypos + h / 2.0f}
+                &&glyph->scale == max::vec2<float>{w, h}
+                &&glyph->character == text[i]
+                &&max::equalsv4(glyph->color, color)
+                &&glyph->txLoc == fonttxLoc
+                ){
+                    cursorX += (ch.advance >> 6) * scale.x;
+                    continue;
+                }else{
+                    glyph->chars = fonts[fontLoc]->chars;
+                    glyph->pos = max::vec2<float>{xpos + w / 2.0f, ypos + h / 2.0f};
+                    glyph->scale = max::vec2<float>{w, h};
+                    glyph->character = text[i];
+                   
+                    glyph->color = color;
+                    glyph->txLoc = fonttxLoc;
+    
+                    glyph->dirty = true;
+                }
+                
+                glyph->visible = true;
         
                 cursorX += (ch.advance >> 6) * scale.x;
+
             }
         }
         
+        void drawElement(std::shared_ptr<UIElement> element){
+            element->draw(this);
+        }
         void drawElement(UIElement* element){
             element->draw(this);
         }
@@ -1029,6 +1106,8 @@ private:
             };
 
             renderer->render(projection);
+
+            pool.finalizeFrame();
         }
 
         void dispose(){
@@ -1039,32 +1118,62 @@ private:
 
     };
     struct UIButton:public UIElement{
+        std::string buttonText;
+        max::vec2<float> buttonTextPos;
+        max::vec2<float> buttonTextScaleModifier;
+
         int txLoc = -1;
         UIButton(max::vec2<float> pos,max::vec2<float> scale,max::vec4<float> color):UIElement(pos,scale,color){}
         void draw(UIRenderer* renderer){
-            renderer->renderer->addRenderable(std::make_shared<E_UIButton>(position,size,color,txLoc));
+            renderer->renderer->addRenderable(std::make_shared<E_UIQuadBase>(position,size,color,txLoc));
         };
-        virtual void update() = 0;
+        virtual void update(UIRenderer* uirenderer) = 0;
     };
+
 
     class UIManager{
         public:
+        std::vector<UIElement*> elements;
+
         Omnix::Core::Omnix& omnix;
         UIManager(Omnix::Core::Omnix& omnix):omnix(omnix){}
         void publish_event(Omnix::Defaults::OmnixUIEvent* event){
             omnix.eventBus().publish(event);
         }
+
+        void draw(UIRenderer* renderer){
+            for(auto element:elements){
+                renderer->drawElement(element);
+            }
+        }
+
+        void update(UIRenderer* uirenderer){
+            for(auto element:elements){
+                element->update(uirenderer);
+            }
+        }
+
+        void dispose(){
+            for(auto element:elements){
+                element->dispose();
+                delete element;
+            }
+        }
     };
 
-
     
+
+    // empty = 0 , hovered = 1 , clicked 2
     struct DefaultButton:public UIButton{
         private:
         BoltID id;
         max::vec4<float> __cl_holder;
         int __tx_holder = 0;
         std::array<max::vec2<float>, 4> __txc_holder;
+        int last = 0;
         public:
+        std::shared_ptr<E_UIQuadBase> renderable;
+        std::function<void(DefaultButton* self,UIRenderer* uirenderer)> updateFnc;
         BoltID get_id(){
             return id;
         }
@@ -1095,17 +1204,22 @@ private:
             __txc_holder = this->txCoords;
         }
         void draw(t2d::ui::UIRenderer* uirenderer) override{
-            uirenderer->renderer->addRenderable(std::make_shared<t2d::ui::E_UIButton>(position,size,color,txLoc,txCoords));
-            uirenderer->drawText("Exit",this->position-max::vec2<float>{16,4}, {0.5,0.5});
+            if(!isVisible) return;
+            renderable = std::make_shared<t2d::ui::E_UIQuadBase>(position,size,color,txLoc,txCoords);
+            uirenderer->renderer->addRenderable(renderable);
         };
-        void update() override{
+        void update(UIRenderer* uirenderer) override{
+            if(!canInteract) return;
+
+
             int mousex = Omnix::Helpers::np_get_data<int,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_X});
             int mousey = Omnix::Helpers::np_get_data<int,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_Y,OMNIX_INVERTED});
     
-            bool isClicked = Omnix::Helpers::np_get_data<bool,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_JUST_PRESS,OMNIX_MOUSE_LEFT_BUTTON});
             
             bool check = max::math::inside_region(mousex,mousey, position.x-(size/2).x, position.y+(size/2).y, position.x+(size/2).x, position.y-(size/2).y);
             if(check){
+                bool isClicked = Omnix::Helpers::np_get_data<bool,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_JUST_PRESS,OMNIX_MOUSE_LEFT_BUTTON});
+                bool holding = Omnix::Helpers::np_get_data<bool,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_PRESS,OMNIX_MOUSE_LEFT_BUTTON});
                 if(isClicked){
                     color = clickColor;
                     this->txLoc = clickTxID;
@@ -1113,18 +1227,304 @@ private:
                     auto __id = get_id();
                     auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_BUTTON,OMNIX_UI_ELEMENT_BUTTON_CLICK,__id};
                     manager->publish_event(&__ouie);
+                    if(last!=2){
+                        renderable->dirt();
+                    }
+                    last = 2;
+                }
+                else if(holding){
+                    color = clickColor;
+                    this->txLoc = clickTxID;
+                    this->txCoords = clickTXCoords;
+                    auto __id = get_id();
+                    auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_BUTTON,OMNIX_UI_ELEMENT_BUTTON_HOLD,__id};
+                    manager->publish_event(&__ouie);
+                    if(last!=2){
+                        renderable->dirt();
+                    }
+                    last = 2;
                 }else{
                     color = hoverColor;
                     this->txLoc = hoverTxID;
                     this->txCoords = hoverTXCoords;
+                    if(last!=1){
+                        renderable->dirt();
+                    }
+                    last = 1;
                 }
             }else{
                 color = __cl_holder;
                 this->txLoc = __tx_holder;
                 this->txCoords = __txc_holder;
+                auto __id = get_id();
+                auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_BUTTON,OMNIX_UI_ELEMENT_BUTTON_RELEASE,__id};
+                manager->publish_event(&__ouie);
+                if(last!=0){
+                    renderable->dirt();
+                }
+                last = 0;
+            }
+
+
+            renderable->pos = position;
+            renderable->scale = size;
+            renderable->txCoords = txCoords;
+            renderable->txid(txLoc);
+            renderable->color = color;
+
+
+            if(updateFnc){
+                updateFnc(this,uirenderer);
+            }
+
+            
+        }
+    };
+
+    struct UILayout{
+        virtual void apply(std::vector<UIElement*>& children,const max::vec2<float>& center,const max::vec2<float>& frameSize) = 0;
+        virtual ~UILayout() = default;
+    };
+    struct VerticalLayout : public UILayout {
+        float spacing = 4.0f;
+    
+        VerticalLayout(float spacing = 4.0f) : spacing(spacing) {}
+    
+        void apply(std::vector<UIElement*>& children, const max::vec2<float>& framePos, const max::vec2<float>& frameSize) override {
+            if (children.empty()) return;
+    
+            float totalHeight = 0.0f;
+            for (auto& child : children)
+                totalHeight += child->size.y;
+            totalHeight += spacing * (children.size() - 1);
+    
+            float startY = framePos.y + frameSize.y / 2.0f - totalHeight / 2.0f;
+    
+            for (auto& child : children) {
+                float height = child->size.y;
+                child->position = (max::vec2<float>{framePos.x - child->size.x / 2.0f, startY});
+                startY += height + spacing;
             }
         }
     };
+    struct HorizontalLayout : public UILayout {
+        float spacing = 4.0f;
+    
+        HorizontalLayout(float spacing = 4.0f) : spacing(spacing) {}
+    
+        void apply(std::vector<UIElement*>& children, const max::vec2<float>& framePos, const max::vec2<float>& frameSize) override {
+            if (children.empty()) return;
+    
+            float totalWidth = 0.0f;
+            for (auto& child : children)
+                totalWidth += child->size.x;
+            totalWidth += spacing * (children.size() - 1);
+    
+            float startX = framePos.x - frameSize.x / 2.0f + (frameSize.x - totalWidth) / 2.0f;
+    
+            for (auto& child : children) {
+            float width = child->size.x;
+            child->position = max::vec2<float>{startX + width / 2.0f, framePos.y};
+            startX += width + spacing;
+            }
+        }
+    };
+
+    struct UIFrame:public UIElement{
+        UILayout* layout;
+        std::function<void(UIFrame* self)> updateFnc;
+        std::shared_ptr<E_UIQuadBase> renderable;
+        int txLoc = -1;
+        UIFrame(max::vec2<float> position,max::vec2<float> size,max::vec4<float> color = {1,1,1,1}):UIElement(position, size,color){}
+
+        void draw(UIRenderer* renderer) override{
+            renderable = std::make_shared<E_UIQuadBase>(position,size,color,txLoc);
+            renderer->renderer->addRenderable(renderable);
+            for(auto child:childs){
+                child->draw(renderer);
+            }
+        }
+        void update(UIRenderer* uirenderer) override{
+            if(updateFnc)
+             updateFnc(this);
+
+            renderable->pos = position;
+            renderable->scale = size;
+            
+            layout->apply(childs, position,size);
+            for(auto child:childs){
+                child->update(uirenderer);
+            }
+        }
+        void dispose(){
+            UIElement::dispose();
+            delete layout;
+        }
+    };
+
+    
+
+    struct UIAdjusterButton:public DefaultButton{
+        UIAdjusterButton(max::vec2<float> pos,max::vec2<float> scale,max::vec4<float> color):DefaultButton(pos, scale, color){};
+        UIFrame *left,*right;
+        bool dragging = false;
+        int lastMouseX = 0;
+
+        void init(){
+            DefaultButton::init();
+            OMNIX_EVENT(Omnix::Defaults::OmnixUIEvent, UiEvent){
+                if (event->eventType == OMNIX_UI_ELEMENT && event->elementType == OMNIX_UI_ELEMENT_BUTTON) {
+                    if (event->id == get_id()) {
+                        if (event->action == OMNIX_UI_ELEMENT_BUTTON_CLICK) {
+                            dragging = true;
+                            lastMouseX = Omnix::Helpers::np_get_data<int, IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_X});
+                        }
+                    }
+                }
+            };
+            
+            manager->omnix.eventBus().subscribe(UiEvent);
+        };
+
+    };
+
+
+    static inline DefaultButton* newButton(
+        max::vec2<float> startPos,
+        max::vec2<float> scale,
+        int txLoc,
+        int clickTxLoc,
+        int hoverTxLoc,
+        max::vec4<float> color,
+        max::vec4<float> hoverColor,
+        max::vec4<float> clickColor,
+        std::array<max::vec2<float>, 4> txCoords,
+        std::array<max::vec2<float>, 4> clickTxCoords,
+        std::array<max::vec2<float>, 4> hoverTxCoords,
+        std::string buttonText,
+        max::vec2<float> buttonTextScaleModifier,
+        Camera2D* cam,
+        UIManager* manager,
+        std::function<void(DefaultButton* self,UIRenderer* uirenderer)> updateFnc = [](t2d::ui::DefaultButton* self,t2d::ui::UIRenderer* uirenderer){
+                        if(self->buttonTextPos!=self->position - max::vec2<float>{static_cast<float>(self->buttonText.size()*(8*self->buttonTextScaleModifier.x)),8*self->buttonTextScaleModifier.y}){
+                            self->buttonTextPos = self->position - max::vec2<float>{static_cast<float>(self->buttonText.size()*(8*self->buttonTextScaleModifier.x)),8*self->buttonTextScaleModifier.y};
+                            self->renderable->dirt();
+                        }
+                        uirenderer->drawText(self->buttonText, self->buttonTextPos, self->buttonTextScaleModifier);
+                    }
+    ){
+        DefaultButton* button = new DefaultButton(startPos,scale,color);
+                
+        button->txLoc = txLoc;
+        button->clickTxID = clickTxLoc;
+        button->hoverTxID = hoverTxLoc;
+
+        button->hoverColor = hoverColor;
+        button->clickColor = clickColor;
+
+        button->txCoords  = txCoords;
+        button->clickTXCoords = clickTxCoords;
+        button->hoverTXCoords = hoverTxCoords;
+
+        button->buttonText = buttonText;
+        
+        button->buttonTextScaleModifier = buttonTextScaleModifier;
+
+        button->cam = cam;
+
+        button->manager = manager;
+
+        button->updateFnc = updateFnc;
+
+        button->init();
+        return button;
+    }
+
+    static inline UIAdjusterButton* newAdjusterButton(
+        max::vec2<float> startPos,
+        max::vec2<float> scale,
+        int txLoc,
+        int clickTxLoc,
+        int hoverTxLoc,
+        max::vec4<float> color,
+        max::vec4<float> hoverColor,
+        max::vec4<float> clickColor,
+        std::array<max::vec2<float>, 4> txCoords,
+        std::array<max::vec2<float>, 4> clickTxCoords,
+        std::array<max::vec2<float>, 4> hoverTxCoords,
+        std::string buttonText,
+        max::vec2<float> buttonTextScaleModifier,
+        Camera2D* cam,
+        UIManager* manager,
+        UIFrame* left,
+        UIFrame* right,
+        std::function<void (DefaultButton* self,UIRenderer* uirenderer)> updateFnc = [](t2d::ui::DefaultButton* self,t2d::ui::UIRenderer* uirenderer){
+                        auto _self = static_cast<t2d::ui::UIAdjusterButton*>(self);
+                        if(self->buttonTextPos!=self->position - max::vec2<float>{static_cast<float>(self->buttonText.size()*(8*self->buttonTextScaleModifier.x)),8*self->buttonTextScaleModifier.y}){
+                            self->buttonTextPos = self->position - max::vec2<float>{static_cast<float>(self->buttonText.size()*(8*self->buttonTextScaleModifier.x)),8*self->buttonTextScaleModifier.y};
+                            self->renderable->dirt();
+                        }
+                        self->size.y = self->parent->size.y;
+                        if (_self->dragging) {
+                        bool isMouseHeld = Omnix::Helpers::np_get_data<bool, IDataProvider::__variants>("OmnixMouseModule", {OMNIX_PRESS,OMNIX_MOUSE_LEFT_BUTTON});
+                        if (!isMouseHeld) {
+                                _self->dragging = false;
+                            } else {
+                                float currentMouseX = Omnix::Helpers::np_get_data<int, IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_X});
+                                float deltaX = currentMouseX - _self->lastMouseX;
+                        
+                                _self->left->size.x += deltaX;
+                                self->position.x += deltaX;
+                                _self->right->position.x += deltaX;
+                                _self->right->size.x -= deltaX;
+                        
+                                _self->lastMouseX = currentMouseX;
+                            }
+                        }
+                        uirenderer->drawText(self->buttonText, self->buttonTextPos, self->buttonTextScaleModifier);
+                        self->renderable->dirt();
+                    }
+       
+    ){
+        UIAdjusterButton* button = new UIAdjusterButton(startPos,scale,color);
+                
+        button->txLoc = txLoc;
+        button->clickTxID = clickTxLoc;
+        button->hoverTxID = hoverTxLoc;
+
+        button->hoverColor = hoverColor;
+        button->clickColor = clickColor;
+
+        button->txCoords  = txCoords;
+        button->clickTXCoords = clickTxCoords;
+        button->hoverTXCoords = hoverTxCoords;
+
+        button->buttonText = buttonText;
+        
+        button->buttonTextScaleModifier = buttonTextScaleModifier;
+
+        button->cam = cam;
+
+        button->manager = manager;
+
+        button->updateFnc = updateFnc;
+
+        button->left = left;
+        button->right = right;
+
+        button->init();
+
+        return button;
+    }
+    
+
+    
+    
+
+
+    
+
+
 
     
 

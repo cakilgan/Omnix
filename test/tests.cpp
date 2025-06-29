@@ -96,9 +96,11 @@ class TestModule:public Omnix::Core::OmnixModule{
     Texture tex2{};
     Timer anim{};
     bool setblend = false;
-    t2d::ui::DefaultButton* button;
-    
 
+    t2d::ui::UIFrame* frame;
+    std::vector<std::array<max::vec2<float>, 4>> uicoords = parse_sheet({160,160}, {16,16});
+
+    
     int obj;
 
     t2d::ui::UIRenderer *uirenderer;
@@ -116,8 +118,16 @@ class TestModule:public Omnix::Core::OmnixModule{
 
     Scene* scene;
 
-    std::vector<GLint> spriteTextures;
 
+    t2d::ui::UIFrame* frame2;
+    t2d::ui::UIFrame* frame3;
+    t2d::ui::UIFrame* frame4;
+
+    t2d::ui::UIAdjusterButton* adjuster;
+
+    std::vector<GLint> spriteTextures;
+    bool dragging = false;
+    int lastMouseX = 0;
 
     TestModule():Omnix::Core::OmnixModule(OmnixModuleID::newModuleID("TestModule","for testing Omnix.")){}
     INSTALL(TestModule){
@@ -131,15 +141,7 @@ class TestModule:public Omnix::Core::OmnixModule{
         event->config.addConfig(OMNIX_WINDOW_CONFIG_TITLE, "TestModule");
         OMNIX_EVENT_END_AUTO("TestModule")
 
-        OMNIX_EVENT_AUTO(Omnix::Defaults::OmnixUIEvent)
-           if(event->eventType==OMNIX_UI_ELEMENT){
-             if(event->elementType==OMNIX_UI_ELEMENT_BUTTON){
-                if(event->action==OMNIX_UI_ELEMENT_BUTTON_CLICK){
-                    std::cout<<"click button"<<std::endl;
-                }
-             }
-           }
-        OMNIX_EVENT_END_AUTO("TestModule")
+        
 
         
        
@@ -149,6 +151,7 @@ class TestModule:public Omnix::Core::OmnixModule{
             height = event->height;
 
             cam.setViewportSize((float)event->width,(float)event->height);
+
         };
 
         OMNIX_EVENT(OmnixPreInitPhaseEvent, pre_init_event){
@@ -170,6 +173,9 @@ class TestModule:public Omnix::Core::OmnixModule{
         OMNIX_EVENT(OmnixMainPhaseEvent, main_phase_event,&omnix){ 
 
             event->OmnixRunState = STATIC_STATE;
+
+
+            
             if(Omnix::Helpers::np_get_data<bool,__variants>("OmnixKeyboardModule", {OMNIX_PRESS,VK_RIGHT})){
                 cam.move({5.0f*event->dt*pixels_per_meter,0});
             }
@@ -200,7 +206,7 @@ class TestModule:public Omnix::Core::OmnixModule{
             }
 
             if(Omnix::Helpers::np_get_data<bool,__variants>("OmnixKeyboardModule", {OMNIX_JUST_PRESS,{VK_SPACE}})){
-                b2Body_SetLinearVelocity(scene->objects[obj].body, {0,+5});
+                frame2->size.x+=10.0f;
             }
 
             
@@ -214,6 +220,11 @@ class TestModule:public Omnix::Core::OmnixModule{
                     omnix.eventBus().publish(&__wm);
                 }
             }
+
+
+            
+
+
         };
         
         OMNIX_EVENT(Omnix::Defaults::OmnixInitOnGraphicContextEvent, initGraphicEvent,&omnix) {
@@ -249,7 +260,6 @@ class TestModule:public Omnix::Core::OmnixModule{
                 uirenderer->fonts.push_back(font);
                 
 
-                auto uicoords = parse_sheet({160,160}, {16,16});
                 
                 scene = new Scene(cam);
                 scene->init({0.0f,-10.0f},{tex.getID()});
@@ -267,24 +277,118 @@ class TestModule:public Omnix::Core::OmnixModule{
 
 
 
-                button = new t2d::ui::DefaultButton({75,180},{150,50},{1,1,1,1});
+                frame2 = new t2d::ui::UIFrame({0,0},{955,static_cast<float>(height)},{1,0,1,1});
+                frame2->updateFnc = [this](t2d::ui::UIFrame* self){
+                    if(self->size.y!=height){
+                        self->size.y = height;
+                        self->renderable->dirt();
+                    }
+                    self->renderable->dirt();
+                };
+                frame2->layout = new t2d::ui::HorizontalLayout();
+
+                frame3 = new t2d::ui::UIFrame({0,0},{955,static_cast<float>(height)},{1,0,1,1});
+                frame3->updateFnc = [this](t2d::ui::UIFrame* self){
+                    if(self->size.y!=height){
+                        self->size.y = height;
+                        self->renderable->dirt();
+                    }
+                    self->renderable->dirt();
+                };
+                frame3->layout = new t2d::ui::HorizontalLayout();
+
                 
-                button->txLoc = 1;
-                button->clickTxID = 1;
-                button->hoverTxID = 1;
 
-                button->hoverColor = {0.8,0.8,0.8,1};
-                button->clickColor = {0.8,0.8,0.8,1};
 
-                button->txCoords  = uicoords[0];
-                button->clickTXCoords = uicoords[1];
-                button->hoverTXCoords = uicoords[0];
+                frame = new t2d::ui::UIFrame({0,0},{1920,1080},{0,1,1,1});
 
-                button->cam = &cam;
+                frame3->add(t2d::ui::newButton(
+                    {0,0},
+                    {150,50},
+                    1, 
+                    1, 
+                    1, 
+                    {1,0,0,1},
+                    {0.8,0,0,1},
+                    {0.5,0.0,0.0,1},
+                    uicoords[0],
+                    uicoords[1],
+                    uicoords[0],
+                    "Button1",
+                    {0.5,0.5},
+                    &cam,
+                    manager
+                    ));
+                    
+                frame2->add(t2d::ui::newButton(
+                    {0,0},
+                    {150,50},
+                    1, 
+                    1, 
+                    1, 
+                    {1,0,0,1},
+                    {0.8,0,0,1},
+                    {0.5,0.0,0.0,1},
+                    uicoords[0],
+                    uicoords[1],
+                    uicoords[0],
+                    "Button1",
+                    {0.5,0.5},
+                    &cam,
+                    manager
+                    ));
+                
+               
 
-                button->manager = manager;
+                frame->add(frame2);
+                frame->add(t2d::ui::newAdjusterButton(
+                    {0,0},
+                    {10,50},
+                    -1, 
+                    -1, 
+                    -1, 
+                    {1,0,0,1},
+                    {0.8,0,0,1},
+                    {0.5,0.0,0.0,1},
+                    uicoords[0],
+                    uicoords[1],
+                    uicoords[0],
+                    "",
+                    {0.5,0.5},
+                    &cam,
+                    manager,
+                    frame2,
+                    frame3
+                    ));
+                frame->add(frame3);
+                
 
-                button->init();
+                frame->updateFnc = [this](t2d::ui::UIFrame* self){
+                    if(self->size.x!=width){
+                        self->size.x = width;
+                        self->renderable->dirt();
+                    }
+                    if(self->size.y!=height){
+                        self->size.y = height;
+                        self->renderable->dirt();
+                    }
+                    if(self->position!=max::vec2<float>{static_cast<float>(width/2),static_cast<float>(height/2)}){
+                        self->position=max::vec2<float>{static_cast<float>(width/2),static_cast<float>(height/2)};
+                        self->renderable->dirt();
+                    }
+                };
+
+                frame->layout = new t2d::ui::HorizontalLayout();
+
+                
+                
+                manager->elements.push_back(frame);
+            
+                max::vec2<int> mvec {mousex,mousey};
+
+                uirenderer->renderer->addRenderable(std::make_shared<t2d::ui::UIGlyph>(font->chars,'X',max::vec2<float>{0,0},max::vec2<float>{0,0}));
+                manager->draw(uirenderer);
+                uirenderer->refresh();
             }
         };
         
@@ -298,21 +402,23 @@ class TestModule:public Omnix::Core::OmnixModule{
                 mousex = Omnix::Helpers::np_get_data<int,__variants>("OmnixMouseModule", {{OMNIX_MOUSE_POS_X}});
                 mousey = Omnix::Helpers::np_get_data<int,__variants>("OmnixMouseModule", {{OMNIX_MOUSE_POS_Y,OMNIX_INVERTED}});
                 max::vec2<int> mvec {mousex,mousey};
-                auto mouseworld = cam.screenToWorld({mousex,mousey});
 
-
-                scene->update(std::min(1.0f/30.0f,event->dt));
-
-                uirenderer->begin();
-                uirenderer->drawText("Cursor: "+max::vec2<int>::tostring(mvec), {0,40}, {1,1});
-                uirenderer->drawText("FPS: "+std::to_string(1.0f/event->dt), {0,80}, {1,1});
-                uirenderer->drawElement(button);
-                uirenderer->refresh();
-                uirenderer->end(&cam);
-                
-                button->update();
 
                 map->refresh();
+                scene->update(std::min(1.0f/30.0f,event->dt));
+
+                
+
+
+                uirenderer->begin();
+                uirenderer->drawText("FPS:: "+formatFloat(1.0f/event->dt), {0,40}, {1,1},{1,0,0,1});
+                uirenderer->end(&cam);
+
+                std::cout<<uirenderer->renderer->renderables.size()<<std::endl;
+
+
+                manager->update(uirenderer);
+
             
             }
         };
@@ -327,10 +433,15 @@ class TestModule:public Omnix::Core::OmnixModule{
     }END_INSTALL
 
     UNINSTALL(TestModule){
+
         uirenderer->dispose();
         delete uirenderer;
-        delete scene;
+        manager->dispose();
+        delete manager;
+
+
         delete map;
+        delete scene;
     }END_UNINSTALL
 
     const void* getData(const std::string& key)const override{
