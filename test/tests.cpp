@@ -120,10 +120,6 @@ class TestModule:public Omnix::Core::OmnixModule{
 
 
     t2d::ui::UIFrame* frame2;
-    t2d::ui::UIFrame* frame3;
-    t2d::ui::UIFrame* frame4;
-
-    t2d::ui::UIAdjusterButton* adjuster;
 
     std::vector<GLint> spriteTextures;
     bool dragging = false;
@@ -146,12 +142,28 @@ class TestModule:public Omnix::Core::OmnixModule{
         
        
 
+        OMNIX_EVENT(Omnix::Defaults::OmnixUIEvent,uievent,&omnix){
+            if(event->eventType==OMNIX_UI_ELEMENT && event->elementType == OMNIX_UI_ELEMENT_BUTTON) {
+                if(event->id == frame->childs[1]->get_id()){
+                    if(event->action == OMNIX_UI_ELEMENT_CLICK){
+                        if((*Omnix::Helpers::get_data<Omnix::Defaults::OmnixWindowMode>("OmnixWindowModule","Omnix.WINDOW_MODE")==Omnix::Defaults::OmnixWindowMode::BORDERLESS_FULLSCREEN)){
+                            Omnix::Defaults::OmnixSetWindowModeEvent __wm{Omnix::Defaults::OmnixWindowMode::WINDOWED};
+                            omnix.eventBus().publish(&__wm);
+                        }
+                        else if((*Omnix::Helpers::get_data<Omnix::Defaults::OmnixWindowMode>("OmnixWindowModule","Omnix.WINDOW_MODE")==Omnix::Defaults::OmnixWindowMode::WINDOWED)){
+                            Omnix::Defaults::OmnixSetWindowModeEvent __wm{Omnix::Defaults::OmnixWindowMode::BORDERLESS_FULLSCREEN};
+                            omnix.eventBus().publish(&__wm);
+                        }
+                    }
+                }
+            }
+        };
+
         OMNIX_EVENT(Omnix::Defaults::OmnixWindowSizeEvent, sizeEvent){
             width = event->width;
             height = event->height;
 
             cam.setViewportSize((float)event->width,(float)event->height);
-
         };
 
         OMNIX_EVENT(OmnixPreInitPhaseEvent, pre_init_event){
@@ -165,15 +177,11 @@ class TestModule:public Omnix::Core::OmnixModule{
             event->vsync =false;
         };
 
-        OMNIX_EVENT(Omnix::Defaults::OmnixInputEvent, inputEvent){
-           
-        };
-        omnix.eventBus().subscribe(inputEvent);
+        
         
         OMNIX_EVENT(OmnixMainPhaseEvent, main_phase_event,&omnix){ 
 
             event->OmnixRunState = STATIC_STATE;
-
 
             
             if(Omnix::Helpers::np_get_data<bool,__variants>("OmnixKeyboardModule", {OMNIX_PRESS,VK_RIGHT})){
@@ -196,34 +204,9 @@ class TestModule:public Omnix::Core::OmnixModule{
                 b2Body_SetLinearVelocity(scene->objects[obj].body, {-3,0});
             }
 
-
-            if(Omnix::Helpers::np_get_data<bool,__variants>("OmnixKeyboardModule", {OMNIX_JUST_PRESS,'P'})){
-                cam.zoomBy(0.7);
+            if(Omnix::Helpers::np_get_data<bool,__variants>("OmnixKeyboardModule", {OMNIX_JUST_PRESS,{VK_SPACE}},&this->id().get_backend())){
+                b2Body_SetLinearVelocity(scene->objects[obj].body, {0,10});
             }
-            
-            if(Omnix::Helpers::np_get_data<bool,__variants>("OmnixKeyboardModule", {OMNIX_JUST_PRESS,'O'})){
-                cam.zoomBy(1.2);
-            }
-
-            if(Omnix::Helpers::np_get_data<bool,__variants>("OmnixKeyboardModule", {OMNIX_JUST_PRESS,{VK_SPACE}})){
-                frame2->size.x+=10.0f;
-            }
-
-            
-            if(Omnix::Helpers::np_get_data<bool,__variants>("OmnixKeyboardModule", {{OMNIX_JUST_PRESS},{VK_F11}})){
-                if((*Omnix::Helpers::get_data<Omnix::Defaults::OmnixWindowMode>("OmnixWindowModule","Omnix.WINDOW_MODE")==Omnix::Defaults::OmnixWindowMode::BORDERLESS_FULLSCREEN)){
-                    Omnix::Defaults::OmnixSetWindowModeEvent __wm{Omnix::Defaults::OmnixWindowMode::WINDOWED};
-                    omnix.eventBus().publish(&__wm);
-                }
-                else if((*Omnix::Helpers::get_data<Omnix::Defaults::OmnixWindowMode>("OmnixWindowModule","Omnix.WINDOW_MODE")==Omnix::Defaults::OmnixWindowMode::WINDOWED)){
-                    Omnix::Defaults::OmnixSetWindowModeEvent __wm{Omnix::Defaults::OmnixWindowMode::BORDERLESS_FULLSCREEN};
-                    omnix.eventBus().publish(&__wm);
-                }
-            }
-
-
-            
-
 
         };
         
@@ -248,8 +231,6 @@ class TestModule:public Omnix::Core::OmnixModule{
                 font->chars = t2d::ui::UIFont::init("testfont.ttf", 32, &txhold);
                 font->fontAtlasTexture = txhold;
 
-                SaveTextureToFile(txhold, 512, 512, "atlas.png");
-
                 tex.loadFromFile("resources/ui/uiatlas.png");
 
                 spriteTextures =  {static_cast<int>(font->fontAtlasTexture),static_cast<int>(tex.getID())};
@@ -267,6 +248,7 @@ class TestModule:public Omnix::Core::OmnixModule{
                 map = Map<50,50>::initialize_and_create_map_HEAP(scene->spriteBatch, {}, {2500,2500}, {50,50});
                 map->m_state(0, SOLID);
                 map->m_color(0, {1,0,0,1});
+                
 
                 scene->init_map(map);
 
@@ -277,73 +259,13 @@ class TestModule:public Omnix::Core::OmnixModule{
 
 
 
-                frame2 = new t2d::ui::UIFrame({0,0},{955,static_cast<float>(height)},{1,0,1,1});
-                frame2->updateFnc = [this](t2d::ui::UIFrame* self){
-                    if(self->size.y!=height){
-                        self->size.y = height;
-                        self->renderable->dirt();
-                    }
-                    self->renderable->dirt();
-                };
-                frame2->layout = new t2d::ui::HorizontalLayout();
-
-                frame3 = new t2d::ui::UIFrame({0,0},{955,static_cast<float>(height)},{1,0,1,1});
-                frame3->updateFnc = [this](t2d::ui::UIFrame* self){
-                    if(self->size.y!=height){
-                        self->size.y = height;
-                        self->renderable->dirt();
-                    }
-                    self->renderable->dirt();
-                };
-                frame3->layout = new t2d::ui::HorizontalLayout();
+                frame = new t2d::ui::UIFrame({200,540},{400,1080},{0,1,1,1});
 
                 
 
-
-                frame = new t2d::ui::UIFrame({0,0},{1920,1080},{0,1,1,1});
-
-                frame3->add(t2d::ui::newButton(
+                auto sldrptr = t2d::ui::newSlider<float>(
                     {0,0},
-                    {150,50},
-                    1, 
-                    1, 
-                    1, 
-                    {1,0,0,1},
-                    {0.8,0,0,1},
-                    {0.5,0.0,0.0,1},
-                    uicoords[0],
-                    uicoords[1],
-                    uicoords[0],
-                    "Button1",
-                    {0.5,0.5},
-                    &cam,
-                    manager
-                    ));
-                    
-                frame2->add(t2d::ui::newButton(
-                    {0,0},
-                    {150,50},
-                    1, 
-                    1, 
-                    1, 
-                    {1,0,0,1},
-                    {0.8,0,0,1},
-                    {0.5,0.0,0.0,1},
-                    uicoords[0],
-                    uicoords[1],
-                    uicoords[0],
-                    "Button1",
-                    {0.5,0.5},
-                    &cam,
-                    manager
-                    ));
-                
-               
-
-                frame->add(frame2);
-                frame->add(t2d::ui::newAdjusterButton(
-                    {0,0},
-                    {10,50},
+                    {400,20},
                     -1, 
                     -1, 
                     -1, 
@@ -353,35 +275,64 @@ class TestModule:public Omnix::Core::OmnixModule{
                     uicoords[0],
                     uicoords[1],
                     uicoords[0],
-                    "",
+                    "Camera Zoom",
                     {0.5,0.5},
                     &cam,
                     manager,
-                    frame2,
-                    frame3
-                    ));
-                frame->add(frame3);
+                    1,
+                    1000,
+                    10,
+                    100,
+                    t2d::ui::newButton(
+                    {0,0},
+                    {20,20},
+                    -1, 
+                    -1, 
+                    -1, 
+                    {1,1,1,1},
+                    {0.8,0,0,1},
+                    {0.5,0.0,0.0,1},
+                    {},
+                    {},
+                    {},
+                    "",
+                    {0.5,0.5},
+                    &cam,
+                    manager
+                    )
+                    );
+                frame->add(sldrptr);
+                auto flscrptr = t2d::ui::newButton(
+                    {0,0},
+                    {400,20},
+                    -1, 
+                    -1, 
+                    -1, 
+                    {1,0,0,1},
+                    {0.8,0,0,1},
+                    {0.5,0.0,0.0,1},
+                    uicoords[0],
+                    uicoords[1],
+                    uicoords[0],
+                    "Switch Fullscreen",
+                    {0.5,0.5},
+                    &cam,
+                    manager
+                    );
+                frame->add(flscrptr);
+                auto ptr = new t2d::ui::UIFlip({200,50},{1,1,1,1});
+                ptr->canInteract = true;
+                frame->add(ptr);
+                frame->childs[2]->manager = manager;
+                ptr->init();
                 
-
+                
                 frame->updateFnc = [this](t2d::ui::UIFrame* self){
-                    if(self->size.x!=width){
-                        self->size.x = width;
-                        self->renderable->dirt();
-                    }
-                    if(self->size.y!=height){
-                        self->size.y = height;
-                        self->renderable->dirt();
-                    }
-                    if(self->position!=max::vec2<float>{static_cast<float>(width/2),static_cast<float>(height/2)}){
-                        self->position=max::vec2<float>{static_cast<float>(width/2),static_cast<float>(height/2)};
-                        self->renderable->dirt();
-                    }
+                    self->reload();
                 };
 
-                frame->layout = new t2d::ui::HorizontalLayout();
+                frame->layout = new t2d::ui::VerticalLayout();
 
-                
-                
                 manager->elements.push_back(frame);
             
                 max::vec2<int> mvec {mousex,mousey};
@@ -403,22 +354,21 @@ class TestModule:public Omnix::Core::OmnixModule{
                 mousey = Omnix::Helpers::np_get_data<int,__variants>("OmnixMouseModule", {{OMNIX_MOUSE_POS_Y,OMNIX_INVERTED}});
                 max::vec2<int> mvec {mousex,mousey};
 
-
                 map->refresh();
                 scene->update(std::min(1.0f/30.0f,event->dt));
 
-                
-
+                cam.setZoom(static_cast<t2d::ui::UISlider<float>*>(frame->childs[0])->currentVal/100);
 
                 uirenderer->begin();
-                uirenderer->drawText("FPS:: "+formatFloat(1.0f/event->dt), {0,40}, {1,1},{1,0,0,1});
+                uirenderer->drawText("FPS:: "+formatFloat(1.0f/event->dt,0), {0,40}, {1,1},{1,0,0,1});
+                manager->update(uirenderer);
                 uirenderer->end(&cam);
 
                 std::cout<<uirenderer->renderer->renderables.size()<<std::endl;
 
 
-                manager->update(uirenderer);
 
+                frame->reload();
             
             }
         };
@@ -430,6 +380,7 @@ class TestModule:public Omnix::Core::OmnixModule{
         omnix.eventBus().subscribe(renderEvent);
         omnix.eventBus().subscribe(initGraphicEvent);
         omnix.eventBus().subscribe(sizeEvent);
+        omnix.eventBus().subscribe(uievent);
     }END_INSTALL
 
     UNINSTALL(TestModule){
@@ -450,7 +401,7 @@ class TestModule:public Omnix::Core::OmnixModule{
     const void* getData(const std::vector<__variants>& keys)const override{
         return 0;
     };
-    const __variants np_getData(const std::vector<__variants>& keys) const override{
+    const __variants np_getData(const std::vector<__variants>& keys,const BoltID* id) const override{
         return {};
     }
 };

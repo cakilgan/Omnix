@@ -1,6 +1,7 @@
 #ifndef OMNIX_DATA_H
 #define OMNIX_DATA_H
 
+#include "BoltID.h"
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -16,7 +17,7 @@ class IDataProvider {
     
         virtual const void* getData(const std::vector<__variants>& keys) const = 0;
 
-        virtual const __variants np_getData(const std::vector<__variants>& keys) const = 0;
+        virtual const __variants np_getData(const std::vector<__variants>& keys,const BoltID* id = nullptr) const = 0;
 
 };
 class DataRegistry {
@@ -44,10 +45,10 @@ public:
     }
 
     template<typename variantTypes>
-    inline const variantTypes np_requestData(const std::string& moduleName,const std::vector<variantTypes>& keys){
+    inline const variantTypes np_requestData(const std::string& moduleName,const std::vector<variantTypes>& keys,const BoltID* id = nullptr){
         auto it = providers.find(moduleName);
         if(it !=providers.end()){
-            return it->second->np_getData(keys);
+            return it->second->np_getData(keys,id);
         }
         return nullptr;
     }

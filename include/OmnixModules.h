@@ -71,6 +71,9 @@ namespace Omnix::Core
     };
 }//Omnix::Core
 
+
+struct OmnixFrameEndEvent:public OmnixEvent{
+};
 namespace Omnix::Defaults{
 class OmnixControllerModule:public Omnix::Core::OmnixModule
 {
@@ -91,7 +94,7 @@ class OmnixControllerModule:public Omnix::Core::OmnixModule
 
     const void* getData(const std::string& key) const override;
     const void* getData(const std::vector<__variants>& key) const override;
-    const __variants np_getData(const std::vector<__variants>& keys) const override;
+    const __variants np_getData(const std::vector<__variants>& keys,const BoltID* id = nullptr) const override;
 };
 struct IWindowConfig{
     std::map<std::string,std::variant<int,bool,std::string>> config{};
@@ -202,7 +205,7 @@ class OmnixWindowModule:public Omnix::Core::OmnixModule{
 
     const void* getData(const std::string& key) const override;
     const void* getData(const std::vector<__variants>& key) const override;
-    const __variants np_getData(const std::vector<__variants>& keys) const override;
+    const __variants np_getData(const std::vector<__variants>& keys,const BoltID* id = nullptr) const override;
 
 };
 
@@ -277,6 +280,9 @@ class OmnixKeyboardModule:public Core::OmnixModule{
             }
 
 
+
+    mutable std::unordered_set<std::string> just_press_consumed[512];
+
     bool keyboard[256]{};
     mutable bool just_press[256]{};
     mutable bool just_release[256]{};
@@ -292,7 +298,7 @@ class OmnixKeyboardModule:public Core::OmnixModule{
 
     const void* getData(const std::string& key) const override;
     const void* getData(const std::vector<__variants>& key) const override;
-    const __variants np_getData(const std::vector<__variants>& keys) const override;
+    const __variants np_getData(const std::vector<__variants>& keys,const BoltID* id = nullptr) const override;
 
     
 };
@@ -330,7 +336,7 @@ class OmnixMouseModule:public Core::OmnixModule{
 
     const void* getData(const std::string& key) const override;
     const void* getData(const std::vector<__variants>& key) const override;
-    const __variants np_getData(const std::vector<__variants>& keys) const override;
+    const __variants np_getData(const std::vector<__variants>& keys,const BoltID* id = nullptr) const override;
 
 };
 
@@ -358,7 +364,7 @@ class OpenGLModule:public Core::OmnixModule{
 
     const void* getData(const std::string& key) const override;
     const void* getData(const std::vector<__variants>& key) const override;
-    const __variants np_getData(const std::vector<__variants>& keys) const override;
+    const __variants np_getData(const std::vector<__variants>& keys,const BoltID* id = nullptr) const override;
 
 };
 struct OmnixRegisterThreadEvent:public OmnixEvent{
@@ -392,7 +398,7 @@ class OmnixMultiThreadingModule:public Core::OmnixModule{
 
     const void* getData(const std::string& key) const override;
     const void* getData(const std::vector<__variants>& key) const override;
-    const __variants np_getData(const std::vector<__variants>& keys) const override;
+    const __variants np_getData(const std::vector<__variants>& keys,const BoltID* id = nullptr) const override;
 };
 
 class OmnixSceneModule:public Core::OmnixModule{
@@ -405,16 +411,22 @@ class OmnixSceneModule:public Core::OmnixModule{
 
     const void* getData(const std::string& key) const override;
     const void* getData(const std::vector<__variants>& key) const override;
-    const __variants np_getData(const std::vector<__variants>& keys) const override;
+    const __variants np_getData(const std::vector<__variants>& keys,const BoltID* id = nullptr) const override;
 };
 
 
 
 #define OMNIX_UI_ELEMENT 50001 
  #define OMNIX_UI_ELEMENT_BUTTON 50011
-  #define OMNIX_UI_ELEMENT_BUTTON_CLICK 50111
-  #define OMNIX_UI_ELEMENT_BUTTON_HOLD 50211
-  #define OMNIX_UI_ELEMENT_BUTTON_RELEASE 50311
+ #define OMNIX_UI_ELEMENT_ADJUSTERBUTTON 50021 
+ #define OMNIX_UI_ELEMENT_SLIDER 50031
+ #define OMNIX_UI_ELEMENT_CHECKBOX 50041
+
+
+
+#define OMNIX_UI_ELEMENT_CLICK 50101
+#define OMNIX_UI_ELEMENT_HOLD 50201
+#define OMNIX_UI_ELEMENT_RELEASE 50301
 
 
 struct OmnixUIEvent:OmnixEvent{
@@ -438,7 +450,7 @@ class OmnixUIModule:public Core::OmnixModule{
 
     const void* getData(const std::string& key) const override;
     const void* getData(const std::vector<__variants>& key) const override;
-    const __variants np_getData(const std::vector<__variants>& keys) const override;
+    const __variants np_getData(const std::vector<__variants>& keys,const BoltID* id = nullptr) const override;
 };
 
 }

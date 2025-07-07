@@ -60,6 +60,9 @@ struct OmnixModuleID{
     bool operator==(OmnixModuleID& other){
         return (this->backend==other.backend); 
     }
+    BoltID& get_backend(){
+        return backend;
+    }
 };
 
 #endif // OMNIX_MODULE_ID_H

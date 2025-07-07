@@ -2,6 +2,7 @@
 #define THUNDER_2D_H
 
 #include "BoltID.h"
+#include "OmnixData.h"
 #include "OmnixModules.h"
 #include "batch.h"
 #include "boltlog.h"
@@ -15,11 +16,13 @@
 #include "t2dshader.h"
 #include "test_utils.h"
 #include "types.h"
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <functional>
 #include <map>
 #include <memory>
+#include <type_traits>
 #include <unordered_map>
 #include <vcruntime_new.h>
 #include <vector>
@@ -648,18 +651,11 @@ namespace t2d::ui{
             std::vector<std::unique_ptr<BaseVertex>> vertices;
             
 
-            if(!visible){
-            //! check
-            vertices.push_back(std::make_unique<UIVertex>(corners[0].x, corners[0].y, ch.uvMin.x, ch.uvMin.y, color.x,color.y,color.z,0, txLoc, OMNIX_UI_FONT));
-            vertices.push_back(std::make_unique<UIVertex>(corners[1].x, corners[1].y, ch.uvMax.x, ch.uvMin.y, color.x,color.y,color.z,0, txLoc, OMNIX_UI_FONT));
-            vertices.push_back(std::make_unique<UIVertex>(corners[2].x, corners[2].y, ch.uvMax.x, ch.uvMax.y, color.x,color.y,color.z,0, txLoc, OMNIX_UI_FONT));
-            vertices.push_back(std::make_unique<UIVertex>(corners[3].x, corners[3].y, ch.uvMin.x, ch.uvMax.y, color.x,color.y,color.z,0, txLoc, OMNIX_UI_FONT));
-            }else{
+            
             vertices.push_back(std::make_unique<UIVertex>(corners[0].x, corners[0].y, ch.uvMin.x, ch.uvMin.y, color.x,color.y,color.z,color.w, txLoc, OMNIX_UI_FONT));
             vertices.push_back(std::make_unique<UIVertex>(corners[1].x, corners[1].y, ch.uvMax.x, ch.uvMin.y, color.x,color.y,color.z,color.w, txLoc, OMNIX_UI_FONT));
             vertices.push_back(std::make_unique<UIVertex>(corners[2].x, corners[2].y, ch.uvMax.x, ch.uvMax.y, color.x,color.y,color.z,color.w, txLoc, OMNIX_UI_FONT));
             vertices.push_back(std::make_unique<UIVertex>(corners[3].x, corners[3].y, ch.uvMin.x, ch.uvMax.y, color.x,color.y,color.z,color.w, txLoc, OMNIX_UI_FONT));
-            }
             
             return vertices;
         }
@@ -942,6 +938,8 @@ private:
 
 
     struct UIElement{
+        BoltID id = BoltID::randomBoltID(1);
+
         UIManager* manager = nullptr;
         std::vector<UIElement*> childs;
         UIElement* parent;
@@ -966,7 +964,23 @@ private:
             }
         }
 
+        BoltID& get_id(){
+            return id;
+        }
+        virtual void reload() = 0;
         virtual ~UIElement() = default;
+
+        float old_A = 1.0f;
+        void set_visible(bool visible) {
+            isVisible = visible;
+        }
+
+        void set_interact(bool interact){
+            canInteract = interact;
+            for(auto child:childs){
+                child->set_interact(interact);
+            }
+        }
     };
 
 
@@ -991,10 +1005,8 @@ private:
     
         void finalizeFrame() {
             for (size_t i = cursor; i < pool.size(); ++i) {
-                if (pool[i]->visible) {
-                    pool[i]->visible = false;
-                    pool[i]->dirty = true;  
-                }
+                pool[i]->scale = {0.0f,0.0f};
+                pool[i]->dirty = true;
             }
             pool.back()->scale = {0,0};
         }
@@ -1039,7 +1051,7 @@ private:
             pool.reset();
         }
 
-         void drawText(const std::string& text, max::vec2<float> position, max::vec2<float> scale,max::vec4<float> color={1,1,1,1}, int fontLoc = 0, int fonttxLoc = 0) {
+         void drawText(const std::string& text, max::vec2<float> position, max::vec2<float> scale,max::vec4<float> color={1,1,1,1}, int fontLoc = 0, int fonttxLoc = 0,max::vec2<float>* totalTextSize = nullptr) {
             float cursorX = position.x;
             for (int i = 0; i < text.size(); i++) {
                 auto it = fonts[fontLoc]->chars.find(text[i]);
@@ -1052,6 +1064,12 @@ private:
         
                 float w = ch.size.x * scale.x;
                 float h = ch.size.y * scale.y;
+
+               
+
+                if(totalTextSize)
+                 totalTextSize->y = h;
+
         
 
                 auto glyph = pool.getGlyph(renderer);
@@ -1081,6 +1099,9 @@ private:
                 cursorX += (ch.advance >> 6) * scale.x;
 
             }
+             if(totalTextSize){
+                 totalTextSize->x = cursorX-position.x;
+             }
         }
         
         void drawElement(std::shared_ptr<UIElement> element){
@@ -1165,18 +1186,14 @@ private:
 
     // empty = 0 , hovered = 1 , clicked 2
     struct DefaultButton:public UIButton{
-        private:
-        BoltID id;
+        public:
         max::vec4<float> __cl_holder;
         int __tx_holder = 0;
         std::array<max::vec2<float>, 4> __txc_holder;
         int last = 0;
-        public:
         std::shared_ptr<E_UIQuadBase> renderable;
         std::function<void(DefaultButton* self,UIRenderer* uirenderer)> updateFnc;
-        BoltID get_id(){
-            return id;
-        }
+        
         max::vec4<float> hoverColor {1,0,1,1};
         max::vec4<float> clickColor {0,1,0,1};
 
@@ -1209,63 +1226,73 @@ private:
             uirenderer->renderer->addRenderable(renderable);
         };
         void update(UIRenderer* uirenderer) override{
-            if(!canInteract) return;
-
-
-            int mousex = Omnix::Helpers::np_get_data<int,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_X});
-            int mousey = Omnix::Helpers::np_get_data<int,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_Y,OMNIX_INVERTED});
-    
-            
-            bool check = max::math::inside_region(mousex,mousey, position.x-(size/2).x, position.y+(size/2).y, position.x+(size/2).x, position.y-(size/2).y);
-            if(check){
-                bool isClicked = Omnix::Helpers::np_get_data<bool,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_JUST_PRESS,OMNIX_MOUSE_LEFT_BUTTON});
-                bool holding = Omnix::Helpers::np_get_data<bool,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_PRESS,OMNIX_MOUSE_LEFT_BUTTON});
-                if(isClicked){
-                    color = clickColor;
-                    this->txLoc = clickTxID;
-                    this->txCoords = clickTXCoords;
-                    auto __id = get_id();
-                    auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_BUTTON,OMNIX_UI_ELEMENT_BUTTON_CLICK,__id};
-                    manager->publish_event(&__ouie);
-                    if(last!=2){
-                        renderable->dirt();
-                    }
-                    last = 2;
-                }
-                else if(holding){
-                    color = clickColor;
-                    this->txLoc = clickTxID;
-                    this->txCoords = clickTXCoords;
-                    auto __id = get_id();
-                    auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_BUTTON,OMNIX_UI_ELEMENT_BUTTON_HOLD,__id};
-                    manager->publish_event(&__ouie);
-                    if(last!=2){
-                        renderable->dirt();
-                    }
-                    last = 2;
-                }else{
-                    color = hoverColor;
-                    this->txLoc = hoverTxID;
-                    this->txCoords = hoverTXCoords;
-                    if(last!=1){
-                        renderable->dirt();
-                    }
-                    last = 1;
-                }
-            }else{
-                color = __cl_holder;
-                this->txLoc = __tx_holder;
-                this->txCoords = __txc_holder;
-                auto __id = get_id();
-                auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_BUTTON,OMNIX_UI_ELEMENT_BUTTON_RELEASE,__id};
-                manager->publish_event(&__ouie);
-                if(last!=0){
-                    renderable->dirt();
-                }
-                last = 0;
+            if(canInteract){
+              int mousex = Omnix::Helpers::np_get_data<int,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_X});
+              int mousey = Omnix::Helpers::np_get_data<int,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_Y,OMNIX_INVERTED});
+              
+              bool check = max::math::inside_region(mousex,mousey, position.x-(size/2).x, position.y+(size/2).y, position.x+(size/2).x, position.y-(size/2).y);
+              if(check){
+                  bool isClicked = Omnix::Helpers::np_get_data<bool,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_JUST_PRESS,OMNIX_MOUSE_LEFT_BUTTON});
+                  bool holding = Omnix::Helpers::np_get_data<bool,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_PRESS,OMNIX_MOUSE_LEFT_BUTTON});
+                  if(isClicked){
+                      color = clickColor;
+                      this->txLoc = clickTxID;
+                      this->txCoords = clickTXCoords;
+                      auto __id = get_id();
+                      auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_BUTTON,OMNIX_UI_ELEMENT_CLICK,__id};
+                      if(last==1){
+                          manager->publish_event(&__ouie);
+                      }
+                      if(last!=2){
+                          renderable->dirt();
+                      }
+                      last = 2;
+                  }
+                  else if(holding){
+                      color = clickColor;
+                      this->txLoc = clickTxID;
+                      this->txCoords = clickTXCoords;
+                      auto __id = get_id();
+                      auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_BUTTON,OMNIX_UI_ELEMENT_HOLD,__id};
+                      manager->publish_event(&__ouie);
+                      if(last!=2){
+                          renderable->dirt();
+                      }
+                      last = 2;
+                  }else{
+                      color = hoverColor;
+                      this->txLoc = hoverTxID;
+                      this->txCoords = hoverTXCoords;
+                      auto __id = get_id();
+                      auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_BUTTON,OMNIX_UI_ELEMENT_RELEASE,__id};
+                      manager->publish_event(&__ouie);
+                      if(last!=1){
+                          renderable->dirt();
+                      }
+                      last = 1;
+                  }
+              }else{
+                  color = __cl_holder;
+                  this->txLoc = __tx_holder;
+                  this->txCoords = __txc_holder;
+                  auto __id = get_id();
+                  auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_BUTTON,OMNIX_UI_ELEMENT_RELEASE,__id};
+                  manager->publish_event(&__ouie);
+                  if(last!=0){
+                      renderable->dirt();
+                  }
+                  last = 0;
+              }
             }
 
 
+
+
+            if (isVisible) {
+                color.w = 1.0f;
+            } else {
+                color.w = 0.0f;
+            }
             renderable->pos = position;
             renderable->scale = size;
             renderable->txCoords = txCoords;
@@ -1276,37 +1303,26 @@ private:
             if(updateFnc){
                 updateFnc(this,uirenderer);
             }
-
             
         }
+        float old_A = 0;
+        void set_visible(const bool& _1){
+            isVisible = _1;
+        }
+        void reload(){
+            renderable->pos = position;
+            renderable->color = color;
+            renderable->scale = size;
+            renderable->dirt();
+        }
     };
+    
 
     struct UILayout{
         virtual void apply(std::vector<UIElement*>& children,const max::vec2<float>& center,const max::vec2<float>& frameSize) = 0;
         virtual ~UILayout() = default;
     };
-    struct VerticalLayout : public UILayout {
-        float spacing = 4.0f;
     
-        VerticalLayout(float spacing = 4.0f) : spacing(spacing) {}
-    
-        void apply(std::vector<UIElement*>& children, const max::vec2<float>& framePos, const max::vec2<float>& frameSize) override {
-            if (children.empty()) return;
-    
-            float totalHeight = 0.0f;
-            for (auto& child : children)
-                totalHeight += child->size.y;
-            totalHeight += spacing * (children.size() - 1);
-    
-            float startY = framePos.y + frameSize.y / 2.0f - totalHeight / 2.0f;
-    
-            for (auto& child : children) {
-                float height = child->size.y;
-                child->position = (max::vec2<float>{framePos.x - child->size.x / 2.0f, startY});
-                startY += height + spacing;
-            }
-        }
-    };
     struct HorizontalLayout : public UILayout {
         float spacing = 4.0f;
     
@@ -1344,21 +1360,114 @@ private:
                 child->draw(renderer);
             }
         }
+        void __fullReload(){
+            layout->apply(childs, position, size);
+            for(auto child:childs){
+                child->reload();
+            }
+            renderable->dirt();
+        }
+        void visibility(const bool& visible){
+            set_visible(visible);
+            for(auto child:childs){
+                child->set_visible(visible);
+            }
+        }
+        max::vec2<float>& resize(){
+            __fullReload();
+            return size;
+        }
+        max::vec2<float>& repos(){
+            __fullReload();
+            return position;
+        }
         void update(UIRenderer* uirenderer) override{
             if(updateFnc)
              updateFnc(this);
 
+            if (isVisible) {
+                color.w = 1.0f;
+            } else {
+                color.w = 0.0f;
+            }
             renderable->pos = position;
             renderable->scale = size;
-            
-            layout->apply(childs, position,size);
+            renderable->color = color;
             for(auto child:childs){
                 child->update(uirenderer);
             }
         }
+
+
         void dispose(){
             UIElement::dispose();
             delete layout;
+        }
+        void reload(){
+            __fullReload();
+        }
+    };
+    class UIFlip:public DefaultButton{
+       public:
+       UIFlip(max::vec2<float> scale,max::vec4<float> color):DefaultButton({}, scale, color){}
+       bool flip = false;
+       void init(){
+           position = parent->position+max::vec2<float>{0,parent->size.y/2};
+           DefaultButton::init();
+           OMNIX_EVENT(Omnix::Defaults::OmnixUIEvent, uievent){
+               if(event->eventType==OMNIX_UI_ELEMENT && event->elementType == OMNIX_UI_ELEMENT_BUTTON){
+                   if(event->id == get_id())
+                    if(event->action == OMNIX_UI_ELEMENT_CLICK)
+                     switch_flip();
+               }
+           };
+           manager->omnix.eventBus().subscribe(uievent);
+       }
+       void switch_flip(){
+           flip = !flip;
+       }
+       void update(UIRenderer* uirenderer){
+           DefaultButton::update(uirenderer);
+           UIFrame* frame = static_cast<UIFrame*>(parent);
+           if(flip){
+               frame->visibility(false);
+               frame->set_interact(false);               
+           }
+           else
+           {
+               frame->visibility(true);
+               frame->set_interact(true);               
+           }
+           set_visible(true);
+           set_interact(true);
+       }
+    };
+    struct VerticalLayout : public UILayout {
+        float spacing = 4.0f;
+    
+        VerticalLayout(float spacing = 4.0f) : spacing(spacing) {}
+    
+        void apply(std::vector<UIElement*>& children, const max::vec2<float>& framePos, const max::vec2<float>& frameSize) override {
+            if (children.empty()) return;
+            int realsize = 0;
+            for(auto child:children){
+                if(dynamic_cast<UIFlip*>(child)){
+                    continue;
+                }
+                realsize++;
+            }
+
+            float ysize = frameSize.y/(realsize+1);
+            max::vec2<float> startPos = framePos + max::vec2<float>{0,frameSize.y/2};
+
+            int count = 1;
+            for(auto child:children){
+                if(dynamic_cast<UIFlip*>(child)){
+                    continue;
+                }
+                child->position = startPos-max::vec2<float>{0,(ysize*count)};
+                count++;
+            }
         }
     };
 
@@ -1373,9 +1482,9 @@ private:
         void init(){
             DefaultButton::init();
             OMNIX_EVENT(Omnix::Defaults::OmnixUIEvent, UiEvent){
-                if (event->eventType == OMNIX_UI_ELEMENT && event->elementType == OMNIX_UI_ELEMENT_BUTTON) {
+                if (event->eventType == OMNIX_UI_ELEMENT && event->elementType == OMNIX_UI_ELEMENT_ADJUSTERBUTTON) {
                     if (event->id == get_id()) {
-                        if (event->action == OMNIX_UI_ELEMENT_BUTTON_CLICK) {
+                        if (event->action == OMNIX_UI_ELEMENT_CLICK) {
                             dragging = true;
                             lastMouseX = Omnix::Helpers::np_get_data<int, IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_X});
                         }
@@ -1386,6 +1495,88 @@ private:
             manager->omnix.eventBus().subscribe(UiEvent);
         };
 
+        void update(UIRenderer* uirenderer){
+            if(!canInteract) return;
+
+
+            int mousex = Omnix::Helpers::np_get_data<int,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_X});
+            int mousey = Omnix::Helpers::np_get_data<int,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_Y,OMNIX_INVERTED});
+    
+            
+            bool check = max::math::inside_region(mousex,mousey, position.x-(size/2).x, position.y+(size/2).y, position.x+(size/2).x, position.y-(size/2).y);
+            if(check){
+                bool isClicked = Omnix::Helpers::np_get_data<bool,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_JUST_PRESS,OMNIX_MOUSE_LEFT_BUTTON});
+                bool holding = Omnix::Helpers::np_get_data<bool,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_PRESS,OMNIX_MOUSE_LEFT_BUTTON});
+                if(isClicked){
+                    color = clickColor;
+                    this->txLoc = clickTxID;
+                    this->txCoords = clickTXCoords;
+                    auto __id = get_id();
+                    auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_ADJUSTERBUTTON,OMNIX_UI_ELEMENT_CLICK,__id};
+                    if(last==1){
+                        manager->publish_event(&__ouie);
+                    }
+                    if(last!=2){
+                        renderable->dirt();
+                    }
+                    last = 2;
+                }
+                else if(holding){
+                    color = clickColor;
+                    this->txLoc = clickTxID;
+                    this->txCoords = clickTXCoords;
+                    auto __id = get_id();
+                    auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_ADJUSTERBUTTON,OMNIX_UI_ELEMENT_HOLD,__id};
+                    manager->publish_event(&__ouie);
+                    if(last!=2){
+                        renderable->dirt();
+                    }
+                    last = 2;
+                }else{
+                    color = hoverColor;
+                    this->txLoc = hoverTxID;
+                    this->txCoords = hoverTXCoords;
+                    auto __id = get_id();
+                    auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_ADJUSTERBUTTON,OMNIX_UI_ELEMENT_RELEASE,__id};
+                    manager->publish_event(&__ouie);
+                    if(last!=1){
+                        renderable->dirt();
+                    }
+                    last = 1;
+                }
+            }else{
+                color = __cl_holder;
+                this->txLoc = __tx_holder;
+                this->txCoords = __txc_holder;
+                auto __id = get_id();
+                auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_ADJUSTERBUTTON,OMNIX_UI_ELEMENT_RELEASE,__id};
+                manager->publish_event(&__ouie);
+                if(last!=0){
+                    renderable->dirt();
+                }
+                last = 0;
+            }
+
+
+            renderable->pos = position;
+            renderable->scale = size;
+            renderable->txCoords = txCoords;
+            renderable->txid(txLoc);
+            renderable->color = color;
+
+
+            if(updateFnc){
+                updateFnc(this,uirenderer);
+            }
+        }
+        void reload(){
+            renderable->pos = position;
+            renderable->scale = size;
+            renderable->txCoords = txCoords;
+            renderable->txid(txLoc);
+            renderable->color = color;
+            renderable->dirt();
+        }
     };
 
 
@@ -1410,6 +1601,7 @@ private:
                             self->buttonTextPos = self->position - max::vec2<float>{static_cast<float>(self->buttonText.size()*(8*self->buttonTextScaleModifier.x)),8*self->buttonTextScaleModifier.y};
                             self->renderable->dirt();
                         }
+                        if(self->isVisible)
                         uirenderer->drawText(self->buttonText, self->buttonTextPos, self->buttonTextScaleModifier);
                     }
     ){
@@ -1473,10 +1665,12 @@ private:
                                 float currentMouseX = Omnix::Helpers::np_get_data<int, IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_X});
                                 float deltaX = currentMouseX - _self->lastMouseX;
                         
-                                _self->left->size.x += deltaX;
+                                _self->parent->reload();
+
+                                _self->left->resize().x+=deltaX;
                                 self->position.x += deltaX;
-                                _self->right->position.x += deltaX;
-                                _self->right->size.x -= deltaX;
+
+                                _self->right->resize().x-=deltaX;
                         
                                 _self->lastMouseX = currentMouseX;
                             }
@@ -1516,19 +1710,572 @@ private:
 
         return button;
     }
+
+
+
+    struct UIImage:public UIElement{
+        std::shared_ptr<E_UIQuadBase> renderable;
+        int txLoc = 0;
+        std::array<max::vec2<float>, 4> txCoords = {
+                max::vec2<float>{0.0f, 0.0f},  // Bottom-left
+                max::vec2<float>{1.0f, 0.0f},  // Bottom-right
+                max::vec2<float>{1.0f, 1.0f},  // Top-right
+                max::vec2<float>{0.0f, 1.0f}   // Top-left
+        };
+        std::function<void(UIImage*)> updateFnc; 
+        UIImage(max::vec2<float> position,max::vec2<float> size,max::vec4<float> color = {1,1,1,1}):UIElement(position, size,color){}
+
+        void draw(UIRenderer* renderer) override{
+            renderable = std::make_shared<E_UIQuadBase>(position,size,color,txLoc,txCoords);
+            renderer->renderer->addRenderable(renderable);
+            for(auto child:childs){
+                child->draw(renderer);
+            }
+        }
+
+        void update(UIRenderer* uirenderer) override{
+            renderable->pos = position;
+            renderable->scale = size;
+            if(updateFnc){
+                updateFnc(this);
+            }
+        }
+
+        void reload(){
+            renderable->pos = position;
+            renderable->scale = size;
+            renderable->txCoords = txCoords;
+            renderable->txid(txLoc);
+            renderable->color = color;
+            renderable->dirt();
+        }
+    };
+
+    static inline std::optional<int> __count(int a, int d, int last) {
+        if (d == 0) return std::nullopt; 
+        int diff = last - a;
+        if (diff % d != 0) return std::nullopt; 
+        int n = (diff / d) + 1;
+        return n > 0 ? std::optional<int>(n) : std::nullopt;
+    }
+
+    template<typename datatype = float>
+    struct UISlider:public DefaultButton{
+        UISlider(max::vec2<float> pos,max::vec2<float> scale,max::vec4<float> color):DefaultButton(pos, scale, color){};
+        bool dragging = false;
+        int lastMouseX = 0;
+
+        DefaultButton* thumb;
+
+
+        datatype minVal = 0;
+        datatype maxVal = 1920;
+
+        datatype currentVal = 0;
+
+
+        float minpos = 0;
+        float maxpos = 0;
+        float currentPos = 0;
+
+        void set_visible(const bool& _1){
+            DefaultButton::set_visible(_1);
+            thumb->set_visible(_1);
+        }
+
+        void init(){
+            DefaultButton::init();
+            OMNIX_EVENT(Omnix::Defaults::OmnixUIEvent, UiEvent){
+                if(event->eventType==OMNIX_UI_ELEMENT && event->elementType == OMNIX_UI_ELEMENT_BUTTON){
+                    if (event->id == thumb->get_id()) {
+                        if (event->action == OMNIX_UI_ELEMENT_HOLD) {
+                            dragging = true;
+                            lastMouseX = Omnix::Helpers::np_get_data<int, IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_X});
+                        }
+                    }
+                }
+                if (event->eventType == OMNIX_UI_ELEMENT && event->elementType == OMNIX_UI_ELEMENT_SLIDER) {
+                    if(event->id == get_id()){
+                        if (event->action == OMNIX_UI_ELEMENT_CLICK) {
+                            int clickX = Omnix::Helpers::np_get_data<int, IDataProvider::__variants>(
+                                "OmnixMouseModule", {OMNIX_MOUSE_POS_X});
+                        
+                            float minpos = position.x - (size.x / 2) + (thumb->size.x / 2);
+                            float maxpos = position.x + (size.x / 2) - (thumb->size.x / 2);
+                        
+                            float clampedX = std::clamp(static_cast<float>(clickX), minpos, maxpos);
+                        
+                            float pixelRange = maxpos - minpos;
+                            float ratio = (clampedX - minpos) / pixelRange;
+                            currentVal = static_cast<datatype>(minVal + ratio * (maxVal - minVal));
+                        
+                            currentVal = static_cast<datatype>( (static_cast<int>(currentVal) / step) * step );
+                        
+                            thumb->position.x = clampedX;
+                        
+                            accumulatedDx = 0;
+                        
+                            thumb->reload();
+                        }
+                    }
+                }
+            };
+            
+            manager->omnix.eventBus().subscribe(UiEvent);
+
+            if(!thumb){
+                thumb = t2d::ui::newButton(
+                    {0,0},
+                    {size.x/4,size.y},
+                    -1, 
+                    -1, 
+                    -1, 
+                    {1,1,0,1},
+                    {0.8,0,0,1},
+                    {0.5,0.0,0.0,1},
+                    txCoords,
+                    txCoords,
+                    txCoords,
+                    "",
+                    {0.5,0.5},
+                    cam,
+                    manager
+                    );
+            }
+        };
+
+        void draw(t2d::ui::UIRenderer *uirenderer) override{
+            DefaultButton::draw(uirenderer);
+            thumb->draw(uirenderer);
+        };
+        int step = 10;
+        float accumulatedDx = 0;
+        void update(UIRenderer *uirenderer) override {
+            if(canInteract){
+
+            int mousex = Omnix::Helpers::np_get_data<int,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_X});
+            int mousey = Omnix::Helpers::np_get_data<int,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_Y,OMNIX_INVERTED});
     
+            
+            bool check = max::math::inside_region(mousex,mousey, position.x-(size/2).x, position.y+(size/2).y, position.x+(size/2).x, position.y-(size/2).y);
+            if(check){
+                bool isClicked = Omnix::Helpers::np_get_data<bool,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_JUST_PRESS,OMNIX_MOUSE_LEFT_BUTTON});
+                bool holding = Omnix::Helpers::np_get_data<bool,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_PRESS,OMNIX_MOUSE_LEFT_BUTTON});
+                if(isClicked){
+                    auto __id = get_id();
+                    auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_SLIDER,OMNIX_UI_ELEMENT_CLICK,__id};
+                    manager->publish_event(&__ouie);
+                    if(last!=2){
+                        renderable->dirt();
+                    }
+                    last = 2;
+                }
+                else if(holding){
+                    auto __id = get_id();
+                    auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_SLIDER,OMNIX_UI_ELEMENT_HOLD,__id};
+                    manager->publish_event(&__ouie);
+                    if(last!=2){
+                        renderable->dirt();
+                    }
+                    last = 2;
+                }else{
+                    if(last!=1){
+                        renderable->dirt();
+                    }
+                    last = 1;
+                }
+            }else{
+                color = __cl_holder;
+                this->txLoc = __tx_holder;
+                this->txCoords = __txc_holder;
+                auto __id = get_id();
+                auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_SLIDER,OMNIX_UI_ELEMENT_RELEASE,__id};
+                manager->publish_event(&__ouie);
+                if(last!=0){
+                    renderable->dirt();
+                }
+                last = 0;
+            }
+            
 
+            
+
+            thumb->position.y = position.y;
+            
+            minpos = position.x - (size.x / 2) + (thumb->size.x / 2);
+            maxpos = position.x + (size.x / 2) - (thumb->size.x / 2);
+            
+            thumb->position.x = std::clamp(thumb->position.x, minpos, maxpos);
+            
+            datatype pixelRange = maxpos - minpos;
+            int range = maxVal - minVal;
+            
+            float pixelsPerStep = static_cast<float>(pixelRange) / (range / step);
+            std::cout<<pixelsPerStep<<std::endl;
+            
+            if (dragging) {
+                bool isMouseHeld = Omnix::Helpers::np_get_data<bool, IDataProvider::__variants>(
+                    "OmnixMouseModule", {OMNIX_PRESS, OMNIX_MOUSE_LEFT_BUTTON});
+                if (!isMouseHeld) {
+                    dragging = false;
+                } else {
+                    float currentMouseX = Omnix::Helpers::np_get_data<int, IDataProvider::__variants>(
+                        "OmnixMouseModule", {OMNIX_MOUSE_POS_X});
+                    float deltaX = currentMouseX - lastMouseX;
+
+                    
+                    accumulatedDx += deltaX;
+                    if (std::abs(accumulatedDx) >= pixelsPerStep) {
+                        int direction = (accumulatedDx > 0) ? 1 : -1;
+                    
+                        currentVal += direction * step;
+                        currentVal = std::clamp(currentVal, minVal, maxVal);
+                    
+                        float ratio = static_cast<float>(currentVal - minVal) / (maxVal - minVal);
+                        thumb->position.x = minpos + ratio * pixelRange;
+                    
+                        accumulatedDx -= direction * pixelsPerStep;
+                    
+                        thumb->reload();
+                        lastMouseX = currentMouseX;
+                    }
+
+                }
+            } else {
+                accumulatedDx = 0;
+                float ratio = static_cast<float>(currentVal - minVal) / (maxVal - minVal);
+                thumb->position.x = minpos + ratio * pixelRange;
+            }
+        
+            
+
+            thumb->update(uirenderer);
+
+            if(dragging){
+                thumb->txLoc = thumb->clickTxID;
+                thumb->txCoords = thumb->clickTXCoords;
+                thumb->color = thumb->clickColor;
+            }
+
+            currentPos = thumb->position.x;
+
+            }
+
+            
+            if (currentPos >= 0) {
+                updateFnc(this, uirenderer);
+            }
+        
+
+            if (isVisible) {
+                thumb->color.w = 1.0f;                
+                color.w = 1.0f;
+            } else {
+                thumb->color.w = 0.00f;
+                color.w = 0.0f;
+            }
+
+            renderable->pos = position;
+            renderable->scale = size;
+            renderable->txCoords = txCoords;
+            renderable->txid(txLoc);
+            renderable->color = color;
+
+            thumb->reload();
+
+        }
+    };
+
+    template <typename datatype = float>
+    static inline UISlider<datatype>* newSlider(
+        max::vec2<float> startPos,
+        max::vec2<float> scale,
+        int txLoc,
+        int clickTxLoc,
+        int hoverTxLoc,
+        max::vec4<float> color,
+        max::vec4<float> hoverColor,
+        max::vec4<float> clickColor,
+        std::array<max::vec2<float>, 4> txCoords,
+        std::array<max::vec2<float>, 4> clickTxCoords,
+        std::array<max::vec2<float>, 4> hoverTxCoords,
+        std::string buttonText,
+        max::vec2<float> buttonTextScaleModifier,
+        Camera2D* cam,
+        UIManager* manager,
+        datatype minVal,
+        datatype maxVal,
+        int step,
+        int startVal,
+        DefaultButton* thumbPtr = nullptr,
+        std::function<void (DefaultButton* self,UIRenderer* uirenderer)> updateFnc = [](t2d::ui::DefaultButton* self,t2d::ui::UIRenderer* uirenderer){
+                //!
+                auto _self = static_cast<UISlider<datatype>*>(self);
+                std::string _size = (self->buttonText+":"+std::to_string(_self->currentVal));
+                
+                if(self->buttonTextPos!=self->position - max::vec2<float>{static_cast<float>(_size.size()*(8*self->buttonTextScaleModifier.x)),-self->size.y}){
+                    self->buttonTextPos = self->position - max::vec2<float>{static_cast<float>(_size.size()*(8*self->buttonTextScaleModifier.x)),-self->size.y};
+                    self->renderable->dirt();
+                }
+                
+                if(self->isVisible)
+                 uirenderer->drawText(_size, self->buttonTextPos, self->buttonTextScaleModifier);
+        }
+    ){
+        UISlider<datatype>* button = new UISlider<datatype>(startPos,scale,color);
+                
+        button->txLoc = txLoc;
+        button->clickTxID = clickTxLoc;
+        button->hoverTxID = hoverTxLoc;
+
+        button->hoverColor = hoverColor;
+        button->clickColor = clickColor;
+
+        button->txCoords  = txCoords;
+        button->clickTXCoords = clickTxCoords;
+        button->hoverTXCoords = hoverTxCoords;
+
+        button->buttonText = buttonText;
+        
+        button->buttonTextScaleModifier = buttonTextScaleModifier;
+
+        button->cam = cam;
+
+        button->manager = manager;
+
+        button->updateFnc = updateFnc;
+
+        button->minVal = minVal;
+        button->maxVal = maxVal;
+        button->step = step;
+
+        button->thumb = thumbPtr;
+
+        button->currentVal = startVal;
+
+        button->init();
+
+        return button;
+    }
+
+
+    class UICheckBox:public DefaultButton{
+        public:
+        UICheckBox(max::vec2<float> pos,max::vec2<float> scale,max::vec4<float> color):DefaultButton(pos, scale, color){};
+
+        bool isChecked = false;
+        bool lastCheck = false;
+
+        int checkedTXID = -1;
+        std::array<max::vec2<float>, 4> checkedTxcoords;
+
+        bool isClicked = false;
+
+        void init(){
+            DefaultButton::init();
+            OMNIX_EVENT(Omnix::Defaults::OmnixUIEvent, uiEvent){
+                if (event->eventType == OMNIX_UI_ELEMENT && event->elementType == OMNIX_UI_ELEMENT_CHECKBOX) {
+                    if(event->id == get_id()){
+                        if(event->action == OMNIX_UI_ELEMENT_CLICK){
+                            isClicked = true;
+                        }
+                        if(event->action == OMNIX_UI_ELEMENT_RELEASE){
+                            isClicked = false;
+                        }
+                    }
+                }
+            };
+            manager->omnix.eventBus().subscribe(uiEvent);
+        }
+        void update(UIRenderer* uirenderer){
+             if(!canInteract) return;
+
+
+            int mousex = Omnix::Helpers::np_get_data<int,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_X});
+            int mousey = Omnix::Helpers::np_get_data<int,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_Y,OMNIX_INVERTED});
     
-    
+            
+            bool check = max::math::inside_region(mousex,mousey, position.x-(size/2).x, position.y+(size/2).y, position.x+(size/2).x, position.y-(size/2).y);
+            if(check){
+                bool isClicked = Omnix::Helpers::np_get_data<bool,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_JUST_PRESS,OMNIX_MOUSE_LEFT_BUTTON});
+                bool holding = Omnix::Helpers::np_get_data<bool,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_PRESS,OMNIX_MOUSE_LEFT_BUTTON});
+                if(isClicked){
+                    color = clickColor;
+                    auto __id = get_id();
+                    auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_CHECKBOX,OMNIX_UI_ELEMENT_CLICK,__id};
+                    if(last==1){
+                        manager->publish_event(&__ouie);
+                    }
+                    if(last!=2){
+                        renderable->dirt();
+                    }
+                    last = 2;
+                }
+                else if(holding){
+                    color = clickColor;
+                    auto __id = get_id();
+                    auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_CHECKBOX,OMNIX_UI_ELEMENT_HOLD,__id};
+                    manager->publish_event(&__ouie);
+                    if(last!=2){
+                        renderable->dirt();
+                    }
+                    last = 2;
+                }else{
+                    color = hoverColor;
+                    auto __id = get_id();
+                    auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_CHECKBOX,OMNIX_UI_ELEMENT_RELEASE,__id};
+                    manager->publish_event(&__ouie);
+                    if(last!=1){
+                        renderable->dirt();
+                    }
+                    last = 1;
+                }
+            }else{
+                color = __cl_holder;
+                auto __id = get_id();
+                auto __ouie = Omnix::Defaults::OmnixUIEvent{OMNIX_UI_ELEMENT,OMNIX_UI_ELEMENT_CHECKBOX,OMNIX_UI_ELEMENT_RELEASE,__id};
+                manager->publish_event(&__ouie);
+                if(last!=0){
+                    renderable->dirt();
+                }
+                last = 0;
+            }
 
 
-    
+           
 
 
+            if(updateFnc){
+                updateFnc(this,uirenderer);
+            }
 
-    
+            if(isClicked){
+                isChecked = !isChecked;
+                isClicked = false;
+            }
 
-    
+            
+            if(isChecked){
+                if(!lastCheck){
+                    txCoords = checkedTxcoords;
+                    txLoc = checkedTXID;
+                }
+            }else{
+                if(lastCheck){
+                    txCoords = __txc_holder;
+                    txLoc = __tx_holder;
+                }
+            }
+
+            lastCheck = isChecked;
+
+            renderable->pos = position;
+            renderable->scale = size;
+            renderable->txCoords = txCoords;
+            renderable->txid(txLoc);
+            renderable->color = color;
+        }
+    };
+
+
+    class UIDraggable:public UIElement{
+        public:
+        UIDraggable():UIElement({}, {}){}
+        bool dragging = false;
+
+        
+        void update(UIRenderer* uirenderer){
+            if(Omnix::Helpers::np_get_data<bool,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_PRESS,OMNIX_MOUSE_LEFT_BUTTON})){
+                dragging = true;
+            }
+
+            int mx = Omnix::Helpers::np_get_data<int,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_X});
+            int my = Omnix::Helpers::np_get_data<int,IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_POS_Y});
+
+            if(max::math::auto_inside_region(mx, my, parent->position, parent->size)){
+                auto _self = this;
+                if (_self->dragging) {
+                bool isMouseHeld = Omnix::Helpers::np_get_data<bool, IDataProvider::__variants>("OmnixMouseModule", {OMNIX_PRESS,OMNIX_MOUSE_LEFT_BUTTON});
+                if (!isMouseHeld) {
+                        _self->dragging = false;
+                    } else {
+                        float deltaX = Omnix::Helpers::np_get_data<int, IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_DX});
+                        float deltaY = Omnix::Helpers::np_get_data<int, IDataProvider::__variants>("OmnixMouseModule", {OMNIX_MOUSE_DY});
+                        
+                        _self->parent->position.x += deltaX;
+                        _self->parent->position.y -= deltaY;
+                        
+                        _self->parent->reload();
+                    }
+                }
+            }
+        }
+        void draw(UIRenderer* renderer){}
+        void reload(){}
+    };
+    static inline UICheckBox* newCheckBox(
+        max::vec2<float> startPos,
+        max::vec2<float> scale,
+        int txLoc,
+        int clickTxLoc,
+        int hoverTxLoc,
+        max::vec4<float> color,
+        max::vec4<float> hoverColor,
+        max::vec4<float> clickColor,
+        std::array<max::vec2<float>, 4> txCoords,
+        std::array<max::vec2<float>, 4> clickTxCoords,
+        std::array<max::vec2<float>, 4> hoverTxCoords,
+        std::string buttonText,
+        max::vec2<float> buttonTextScaleModifier,
+        Camera2D* cam,
+        UIManager* manager,
+        int checkTXID,
+        std::array<max::vec2<float>, 4> checktxCoords,
+        std::function<void(DefaultButton* self,UIRenderer* uirenderer)> updateFnc = [](t2d::ui::DefaultButton* self,t2d::ui::UIRenderer* uirenderer){
+                    //!
+                        if(!self->isVisible) return; 
+                        auto _self = static_cast<UICheckBox*>(self);
+                        std::string _size = (self->buttonText);
+                        
+                        self->buttonTextPos = self->position + max::vec2<float>{(self->size/2).x+5,0};
+                     
+                        uirenderer->drawText(_size, self->buttonTextPos, self->buttonTextScaleModifier);
+                    }
+    ){
+        UICheckBox* button = new UICheckBox(startPos,scale,color);
+                
+        button->txLoc = txLoc;
+        button->clickTxID = clickTxLoc;
+        button->hoverTxID = hoverTxLoc;
+
+        button->hoverColor = hoverColor;
+        button->clickColor = clickColor;
+
+        button->txCoords  = txCoords;
+        button->clickTXCoords = clickTxCoords;
+        button->hoverTXCoords = hoverTxCoords;
+
+        button->buttonText = buttonText;
+        
+        button->buttonTextScaleModifier = buttonTextScaleModifier;
+
+        button->cam = cam;
+
+        button->manager = manager;
+
+        button->updateFnc = updateFnc;
+
+        button->checkedTxcoords = checktxCoords;
+        button->checkedTXID = checkTXID;
+
+        button->init();
+        return button;
+    }
+
+
+   
+
+
 
 };
 #endif // THUNDER_2D_H

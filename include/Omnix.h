@@ -44,7 +44,7 @@ namespace Omnix{
 
 
         template<typename  datatype,typename varianttypes>
-        static const datatype np_get_data(const std::string& from,const std::vector<varianttypes>& keys);
+        static const datatype np_get_data(const std::string& from,const std::vector<varianttypes>& keys,const BoltID* id = nullptr);
 
     };
 
@@ -116,8 +116,8 @@ static const datatype* Omnix::Helpers::get_data(const std::string& from,const st
 }
 
 template<typename  datatype,typename varianttypes>
-static const datatype Omnix::Helpers::np_get_data(const std::string& from,const std::vector<varianttypes>& keys){
-    auto a = Omnix::Core::Omnix::data_instance().np_requestData(from, keys);
+static const datatype Omnix::Helpers::np_get_data(const std::string& from,const std::vector<varianttypes>& keys,const BoltID* id){
+    auto a = Omnix::Core::Omnix::data_instance().np_requestData(from, keys,id);
     if(std::holds_alternative<datatype>(a)){
        auto result =  std::get<datatype>(a);
        return result;

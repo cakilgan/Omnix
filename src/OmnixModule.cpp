@@ -1,3 +1,4 @@
+#include "BoltID.h"
 #define NOMINMAX
 
 #include "Omnix.h"
@@ -17,6 +18,7 @@
 #include <glad/wgl.h>
 #include <gl/GL.h>
 #include <vector>
+#include <unordered_set>
 #pragma comment(lib,"opengl32.lib")
 #include <dwmapi.h>
 #pragma comment(lib,"dwmapi.lib")
@@ -93,6 +95,9 @@ INSTALL(Omnix::Defaults::OmnixControllerModule){
 
           dt = timer.elapsed();
           OMNIX_DELTA_TIME = dt;
+          
+          OmnixFrameEndEvent frameEndEvent{};
+          omnix.eventBus().publish(&frameEndEvent);
         }
         POP_PREFIX();
 
@@ -117,7 +122,7 @@ DATA(Omnix::Defaults::OmnixControllerModule,const std::string& key){
 DATA(Omnix::Defaults::OmnixControllerModule,const std::vector<__variants>& key){
 
 }END_DATA
-NP_DATA(Omnix::Defaults::OmnixControllerModule, const std::vector<__variants>& keys){
+NP_DATA(Omnix::Defaults::OmnixControllerModule, const std::vector<__variants>& keys,const BoltID* id){
 
 }END_DATA
 // NOTE:: OmnixControllerModule end;
@@ -170,7 +175,7 @@ DATA(Omnix::Defaults::OmnixWindowModule,const std::vector<__variants>& key){
 
 }END_DATA
 
-NP_DATA(Omnix::Defaults::OmnixWindowModule, const std::vector<__variants>& keys){
+NP_DATA(Omnix::Defaults::OmnixWindowModule, const std::vector<__variants>& keys,const BoltID* id){
     
 }END_DATA
 // NOTE:: OmnixWindowModule end;
@@ -183,6 +188,9 @@ INSTALL(Omnix::Defaults::OmnixKeyboardModule){
         int keycode = event->keycode;
         int action = event->action_code;
         if(action==1){
+            if(!just_press[keycode]){
+                just_press[keycode] = true;
+            }
             if(keyboard[keycode]){
                 repeats[keycode] = true;
             }
@@ -200,6 +208,7 @@ INSTALL(Omnix::Defaults::OmnixKeyboardModule){
         }
         else if(action==0){
             if(just_press[keycode]){
+                this->just_press_consumed[keycode].clear();
                 just_press[keycode] = false;
             }
             if(just_press_repeat[keycode]){
@@ -213,6 +222,12 @@ INSTALL(Omnix::Defaults::OmnixKeyboardModule){
             keyboard[keycode] = false;
         }
     };
+
+
+    OMNIX_EVENT(OmnixFrameEndEvent, frameEnd){
+        
+    };
+    omnix.eventBus().subscribe(frameEnd);
     omnix.eventBus().subscribe(keyevent);
 }END_INSTALL
 
@@ -230,7 +245,7 @@ DATA(Omnix::Defaults::OmnixKeyboardModule,const std::vector<__variants>& keys){
 
 
 
-NP_DATA(Omnix::Defaults::OmnixKeyboardModule, const std::vector<__variants>& keys){
+NP_DATA(Omnix::Defaults::OmnixKeyboardModule, const std::vector<__variants>& keys,const BoltID* id){
     if(std::holds_alternative<int>(keys[0])){
         auto do_key = std::get<int>(keys[0]);
         if(std::holds_alternative<int>(keys[1])){
@@ -240,10 +255,11 @@ NP_DATA(Omnix::Defaults::OmnixKeyboardModule, const std::vector<__variants>& key
             }
             if(do_key==OMNIX_JUST_PRESS){
               bool result = just_press[key_key];
-              if(just_press[key_key]){
-                  just_press[key_key] = false;
+              if(result && this->just_press_consumed[key_key].count(id->toString()) == 0){
+                 just_press_consumed[key_key].insert(id->toString());
+                 return true;
               }
-              return result;
+              return false;
             }
             if(do_key==OMNIX_JUST_PRESS_REPEAT){
               bool result = just_press_repeat[key_key];
@@ -352,7 +368,7 @@ DATA(Omnix::Defaults::OmnixMouseModule,const std::vector<__variants>& keys){
 
 
 
-NP_DATA(Omnix::Defaults::OmnixMouseModule, const std::vector<__variants>& keys){
+NP_DATA(Omnix::Defaults::OmnixMouseModule, const std::vector<__variants>& keys,const BoltID* id){
     if(std::holds_alternative<int>(keys[0])){
 
         auto query = std::get<int>(keys[0]);
@@ -550,7 +566,7 @@ DATA(Omnix::Defaults::OpenGLModule,const std::vector<__variants>& key){
 
 }END_DATA
 
-NP_DATA(Omnix::Defaults::OpenGLModule, const std::vector<__variants>& keys){
+NP_DATA(Omnix::Defaults::OpenGLModule, const std::vector<__variants>& keys,const BoltID* id){
 
 }END_DATA
 // NOTE:: OmnixOpenGLModule end;
@@ -601,7 +617,7 @@ DATA(Omnix::Defaults::OmnixMultiThreadingModule,const std::string& key){
 DATA(Omnix::Defaults::OmnixMultiThreadingModule,const std::vector<__variants>& key){
 }END_DATA
 
-NP_DATA(Omnix::Defaults::OmnixMultiThreadingModule, const std::vector<__variants>& keys){
+NP_DATA(Omnix::Defaults::OmnixMultiThreadingModule, const std::vector<__variants>& keys,const BoltID* id){
 }END_DATA
 // NOTE:: OmnixMultiThreadingModule end;
 
@@ -626,6 +642,6 @@ DATA(Omnix::Defaults::OmnixUIModule,const std::string& key){
 DATA(Omnix::Defaults::OmnixUIModule,const std::vector<__variants>& key){
 }END_DATA
 
-NP_DATA(Omnix::Defaults::OmnixUIModule, const std::vector<__variants>& keys){
+NP_DATA(Omnix::Defaults::OmnixUIModule, const std::vector<__variants>& keys,const BoltID* id){
 }END_DATA
 // NOTE:: OmnixUIModule end;
